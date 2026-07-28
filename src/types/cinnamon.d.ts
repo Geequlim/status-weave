@@ -32,6 +32,7 @@ declare namespace Cinnamon {
 	interface SignalEmitter {
 		connect(signal: string, callback: (...args: unknown[]) => void): number;
 		disconnect(id: number): void;
+		emit(signal: string, ...args: unknown[]): void;
 	}
 
 	interface PopupMenu extends SignalEmitter {
@@ -43,6 +44,7 @@ declare namespace Cinnamon {
 
 	interface PopupMenuItem extends SignalEmitter {
 		readonly actor: StActor;
+		activate(event?: unknown, keepMenu?: boolean): void;
 		addActor(
 			actor: StActor,
 			params?: { align?: number; expand?: boolean; span?: number },

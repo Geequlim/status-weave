@@ -21,7 +21,7 @@ export interface DetailPageFrame {
 export function createDetailPageFrame(
 	context: DetailPageContext,
 	title: string,
-	iconName: 'cpu' | 'memory' | null,
+	iconName: 'cpu' | 'memory' | 'temperature' | 'fan' | null,
 ): DetailPageFrame {
 	const { Gio, PopupBaseMenuItem, St, maxContentHeight, metadataPath } = context;
 	const item = new PopupBaseMenuItem({ activate: false, hover: false, reactive: true });

@@ -1,4 +1,9 @@
-export type MetricId = 'cpu.usage' | 'memory.usage' | 'demo.status';
+export type MetricId =
+	| 'cpu.usage'
+	| 'memory.usage'
+	| 'temperature.hwmon'
+	| 'fan.hwmon'
+	| 'demo.status';
 export type MetricStatus = 'normal' | 'warning' | 'critical' | 'waiting' | 'unavailable';
 
 export interface CpuCoreUsage {
@@ -36,6 +41,38 @@ export interface DemoStatusValue {
 	readonly temperatureCelsius: number;
 }
 
+export interface HwmonTemperatureSensor {
+	readonly criticalCelsius: number | null;
+	readonly deviceName: string;
+	readonly id: string;
+	readonly label: string;
+	readonly maximumCelsius: number | null;
+	readonly valueCelsius: number;
+}
+
+export interface HwmonTemperatureValue {
+	readonly averageCelsius: number;
+	readonly peakCelsius: number;
+	readonly primaryCelsius: number;
+	readonly primaryLabel: string;
+	readonly sensors: readonly HwmonTemperatureSensor[];
+}
+
+export interface HwmonFanSensor {
+	readonly deviceName: string;
+	readonly id: string;
+	readonly label: string;
+	readonly rpm: number;
+}
+
+export interface HwmonFanValue {
+	readonly averageRpm: number;
+	readonly peakRpm: number;
+	readonly primaryLabel: string;
+	readonly primaryRpm: number;
+	readonly sensors: readonly HwmonFanSensor[];
+}
+
 export interface CpuHardwareMetadata {
 	readonly modelName: string;
 }
@@ -54,6 +91,8 @@ export interface SystemHardwareMetadata {
 export interface MetricValueMap {
 	readonly 'cpu.usage': CpuUsageValue;
 	readonly 'memory.usage': MemoryUsageValue;
+	readonly 'temperature.hwmon': HwmonTemperatureValue;
+	readonly 'fan.hwmon': HwmonFanValue;
 	readonly 'demo.status': DemoStatusValue;
 }
 

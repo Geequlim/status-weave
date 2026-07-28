@@ -23,6 +23,7 @@ describe('detail popup model', () => {
 	it('reserves hardware badge width without enlarging state labels', () => {
 		expect(detailBadgeMinimumWidthEm('SK Hynix', 'normal')).toBe(4.25);
 		expect(detailBadgeMinimumWidthEm('Intel Core Ultra 9 386H', 'normal')).toBe(11.5);
+		expect(detailBadgeMinimumWidthEm('20 个传感器', 'normal')).toBe(5.5);
 		expect(detailBadgeMinimumWidthEm('等待采样', 'waiting')).toBe(4.25);
 		expect(detailBadgeMinimumWidthEm('x'.repeat(100), 'normal')).toBe(14);
 	});

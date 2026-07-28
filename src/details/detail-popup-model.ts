@@ -9,7 +9,11 @@ export type DetailTabsPlacement = 'before-pages' | 'after-pages';
 
 export function detailBadgeMinimumWidthEm(text: string, status: MetricStatus): number {
 	if (status !== 'normal') return 4.25;
-	return Math.min(14, Math.max(4.25, text.length * 0.5));
+	const textWidth = Array.from(text).reduce(
+		(width, character) => width + (/[\u3000-\u9fff]/.test(character) ? 1 : 0.5),
+		0,
+	);
+	return Math.min(14, Math.max(4.25, textWidth));
 }
 
 export function detailTabsPlacement(

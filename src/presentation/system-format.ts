@@ -81,8 +81,36 @@ function formatDemo(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 	}
 }
 
+function formatHwmonTemperature(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
+	const value = findMetricSample(snapshot, {
+		metricId: 'temperature.hwmon',
+		sourceId: slot.sourceId,
+	})?.value;
+	if (!value) return '—';
+	if (slot.format === 'temperature-peak') {
+		return `最高 ${formatTemperature(value.peakCelsius)}`;
+	}
+	if (slot.format === 'temperature-average') {
+		return `平均 ${formatTemperature(value.averageCelsius)}`;
+	}
+	return formatTemperature(value.primaryCelsius);
+}
+
+function formatHwmonFan(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
+	const value = findMetricSample(snapshot, {
+		metricId: 'fan.hwmon',
+		sourceId: slot.sourceId,
+	})?.value;
+	if (!value) return '—';
+	if (slot.format === 'fan-peak') return `最高 ${formatRpm(value.peakRpm)}`;
+	if (slot.format === 'fan-average') return `平均 ${formatRpm(value.averageRpm)}`;
+	return formatRpm(value.primaryRpm);
+}
+
 function widthClass(metric: MetricSlot['metric'], format: MetricFormatId): string {
 	if (metric === 'memory.usage') return `memory-${format}`;
+	if (metric === 'temperature.hwmon') return format;
+	if (metric === 'fan.hwmon') return format;
 	if (metric === 'demo.status' && !format.startsWith('percent')) return `demo-${format}`;
 	if (format === 'percent-precise') return 'percent-precise';
 	return 'percent';
@@ -101,14 +129,22 @@ export function formatSystemSlotPresentation(
 			? formatCpu(snapshot, slot)
 			: slot.metric === 'memory.usage'
 				? formatMemory(snapshot, slot)
-				: formatDemo(snapshot, slot);
+				: slot.metric === 'temperature.hwmon'
+					? formatHwmonTemperature(snapshot, slot)
+					: slot.metric === 'fan.hwmon'
+						? formatHwmonFan(snapshot, slot)
+						: formatDemo(snapshot, slot);
 	return {
 		label: slot.showLabel
 			? slot.metric === 'memory.usage'
 				? 'RAM'
-				: slot.metric === 'demo.status'
-					? '演示'
-					: 'CPU'
+				: slot.metric === 'temperature.hwmon'
+					? 'TEMP'
+					: slot.metric === 'fan.hwmon'
+						? 'FAN'
+						: slot.metric === 'demo.status'
+							? '演示'
+							: 'CPU'
 			: null,
 		status: sample?.status ?? 'unavailable',
 		value,
@@ -137,10 +173,14 @@ export function formatSystemLabel(
 function sourceLabel(slot: MetricSlot): string {
 	if (slot.sourceId === 'synthetic') return '虚拟数据源';
 	if (slot.sourceId !== 'system') return slot.sourceId;
-	return slot.metric === 'cpu.usage' ? '系统 CPU' : '系统内存';
+	if (slot.metric === 'cpu.usage') return '系统 CPU';
+	if (slot.metric === 'memory.usage') return '系统内存';
+	return 'hwmon';
 }
 
 function unitLabel(slot: MetricSlot): string {
+	if (slot.metric === 'temperature.hwmon') return '°C';
+	if (slot.metric === 'fan.hwmon') return 'RPM';
 	if (slot.metric === 'demo.status') {
 		switch (slot.format) {
 			case 'temperature':

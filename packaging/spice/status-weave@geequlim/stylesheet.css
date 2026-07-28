@@ -1,5 +1,5 @@
 .status-weave-layout {
-	spacing: 0.6em;
+	spacing: 1em;
 }
 
 .status-weave-metric {
@@ -20,23 +20,23 @@
 
 .status-weave-value-percent,
 .status-weave-value-memory-percent {
-	min-width: 2.65em;
+	min-width: 0;
 }
 
 .status-weave-value-percent-precise {
-	min-width: 3.5em;
+	min-width: 0;
 }
 
 .status-weave-value-memory-used {
-	min-width: 4.75em;
+	min-width: 0;
 }
 
 .status-weave-value-memory-used-total {
-	min-width: 8em;
+	min-width: 0;
 }
 
 .status-weave-value-memory-available {
-	min-width: 7.1em;
+	min-width: 0;
 }
 
 .status-weave-value-demo-temperature,
@@ -50,6 +50,24 @@
 
 .status-weave-value-demo-rpm {
 	min-width: 4.85em;
+}
+
+.status-weave-value-temperature-primary {
+	min-width: 0;
+}
+
+.status-weave-value-temperature-peak,
+.status-weave-value-temperature-average {
+	min-width: 0;
+}
+
+.status-weave-value-fan-primary {
+	min-width: 0;
+}
+
+.status-weave-value-fan-peak,
+.status-weave-value-fan-average {
+	min-width: 0;
 }
 
 .status-weave-value-grouped {
@@ -105,6 +123,28 @@
 
 .status-weave-detail-core-list {
 	spacing: 1.4em;
+}
+
+.status-weave-detail-sensor-list {
+	spacing: 1.4em;
+}
+
+.status-weave-detail-sensor-column {
+	min-width: 17em;
+	spacing: 0.55em;
+}
+
+.status-weave-detail-sensor-row {
+	spacing: 0.75em;
+}
+
+.status-weave-detail-sensor-current {
+	width: 6em;
+	text-align: right;
+}
+
+.status-weave-detail-fan-list {
+	spacing: 0.55em;
 }
 
 .status-weave-detail-row {

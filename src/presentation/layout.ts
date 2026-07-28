@@ -11,7 +11,13 @@ export type MetricFormatId =
 	| 'temperature'
 	| 'bytes'
 	| 'rate'
-	| 'rpm';
+	| 'rpm'
+	| 'temperature-primary'
+	| 'temperature-peak'
+	| 'temperature-average'
+	| 'fan-primary'
+	| 'fan-peak'
+	| 'fan-average';
 export type MetricPresetId = 'compact' | 'standard' | 'detailed';
 export type MoveDirection = 'left' | 'right';
 
@@ -59,6 +65,8 @@ export const iconStyleOptions: readonly IconStyleOption[] = [
 export const metricLabels: Record<MetricId, string> = {
 	'cpu.usage': 'CPU 使用率',
 	'memory.usage': '内存',
+	'temperature.hwmon': '温度',
+	'fan.hwmon': '风扇',
 	'demo.status': '状态演示',
 };
 
@@ -72,6 +80,16 @@ export const metricFormatOptions: Record<MetricId, readonly FormatOption[]> = {
 		{ id: 'used', label: '已用量 · 7.4 GiB' },
 		{ id: 'used-total', label: '已用 / 总量 · 7.4 / 31.1 GiB' },
 		{ id: 'available', label: '可用量 · 可用 23.7 GiB' },
+	],
+	'temperature.hwmon': [
+		{ id: 'temperature-primary', label: '主要温度 · 56.0 °C' },
+		{ id: 'temperature-peak', label: '最高温度 · 最高 56.0 °C' },
+		{ id: 'temperature-average', label: '平均温度 · 平均 47.2 °C' },
+	],
+	'fan.hwmon': [
+		{ id: 'fan-primary', label: '主要风扇 · 1800 RPM' },
+		{ id: 'fan-peak', label: '最高转速 · 最高 2500 RPM' },
+		{ id: 'fan-average', label: '平均转速 · 平均 2182 RPM' },
 	],
 	'demo.status': [
 		{ id: 'percent', label: '整数百分比 · 42%' },
@@ -92,24 +110,32 @@ export const metricPresetOptions: readonly MetricPresetOption[] = [
 const defaultFormats: Record<MetricId, MetricFormatId> = {
 	'cpu.usage': 'percent',
 	'memory.usage': 'used-total',
+	'temperature.hwmon': 'temperature-primary',
+	'fan.hwmon': 'fan-primary',
 	'demo.status': 'percent',
 };
 
 const defaultIconStyles: Record<MetricId, IconStyle> = {
 	'cpu.usage': 'regular',
 	'memory.usage': 'regular',
+	'temperature.hwmon': 'regular',
+	'fan.hwmon': 'regular',
 	'demo.status': 'none',
 };
 
 const defaultSourceIds: Record<MetricId, string> = {
 	'cpu.usage': 'system',
 	'memory.usage': 'system',
+	'temperature.hwmon': 'system',
+	'fan.hwmon': 'system',
 	'demo.status': 'synthetic',
 };
 
-export const metricIconNames: Record<MetricId, 'cpu' | 'memory' | null> = {
+export const metricIconNames: Record<MetricId, 'cpu' | 'memory' | 'temperature' | 'fan' | null> = {
 	'cpu.usage': 'cpu',
 	'memory.usage': 'memory',
+	'temperature.hwmon': 'temperature',
+	'fan.hwmon': 'fan',
 	'demo.status': null,
 };
 
@@ -138,7 +164,11 @@ export const defaultLayout: readonly LayoutSlot[] = [
 ];
 
 const isMetricId = (value: unknown): value is MetricId =>
-	value === 'cpu.usage' || value === 'memory.usage' || value === 'demo.status';
+	value === 'cpu.usage' ||
+	value === 'memory.usage' ||
+	value === 'temperature.hwmon' ||
+	value === 'fan.hwmon' ||
+	value === 'demo.status';
 
 const isMetricFormat = (metric: MetricId, value: unknown): value is MetricFormatId =>
 	metricFormatOptions[metric].some((option) => option.id === value);
@@ -315,19 +345,36 @@ export function applySlotPreset(
 ): LayoutSlot[] {
 	return layout.map((slot) => {
 		if (slot.id !== id || slot.kind !== 'metric') return cloneSlot(slot);
-		const format =
-			preset === 'detailed'
-				? slot.metric === 'memory.usage'
-					? 'used-total'
-					: 'percent-precise'
-				: preset === 'compact'
-					? 'percent'
-					: slot.metric === 'memory.usage'
-						? 'used'
-						: 'percent';
+		const formats: Record<MetricId, Record<MetricPresetId, MetricFormatId>> = {
+			'cpu.usage': {
+				compact: 'percent',
+				standard: 'percent',
+				detailed: 'percent-precise',
+			},
+			'memory.usage': {
+				compact: 'percent',
+				standard: 'used',
+				detailed: 'used-total',
+			},
+			'temperature.hwmon': {
+				compact: 'temperature-primary',
+				standard: 'temperature-primary',
+				detailed: 'temperature-peak',
+			},
+			'fan.hwmon': {
+				compact: 'fan-primary',
+				standard: 'fan-primary',
+				detailed: 'fan-peak',
+			},
+			'demo.status': {
+				compact: 'percent',
+				standard: 'percent',
+				detailed: 'percent-precise',
+			},
+		};
 		return {
 			...slot,
-			format,
+			format: formats[slot.metric][preset],
 			showLabel: preset !== 'compact',
 		};
 	});

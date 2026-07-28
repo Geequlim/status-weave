@@ -19,10 +19,10 @@ describe('project scaffold', () => {
 		expect(metadata['max-instances']).toBe(-1);
 	});
 
-	it('vendors all CPU and memory icon styles with their license', async () => {
+	it('vendors all metric icon styles with their license', async () => {
 		const iconRoot = join(root, 'packaging/spice/status-weave@geequlim/icons/phosphor');
 		for (const style of ['regular', 'bold', 'fill']) {
-			for (const metric of ['cpu', 'memory']) {
+			for (const metric of ['cpu', 'memory', 'temperature', 'fan']) {
 				const svg = await readFile(join(iconRoot, style, `${metric}-symbolic.svg`), 'utf8');
 				expect(svg).toContain('<svg');
 				expect(svg).toContain('currentColor');

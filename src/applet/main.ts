@@ -203,9 +203,13 @@ export function createApplet(
 		telemetrySubscription?.setMetrics(visibleMetricIds());
 		render();
 	};
+	const keepMenuOpen = <T extends Cinnamon.PopupMenuItem>(item: T): T => {
+		item.activate = (event?: unknown) => item.emit('activate', event, true);
+		return item;
+	};
 
 	const addMetricAction = (menu: Cinnamon.PopupMenu, label: string, metric: MetricId) => {
-		const item = new PopupMenuItem(label);
+		const item = keepMenuOpen(new PopupMenuItem(label));
 		item.connect('activate', () => saveLayout(addMetricSlot(layout, metric)));
 		menu.addMenuItem(item);
 	};
@@ -213,9 +217,11 @@ export function createApplet(
 	const addMenu = new PopupSubMenuMenuItem('添加展示项');
 	addMetricAction(addMenu.menu, 'CPU 使用率', 'cpu.usage');
 	addMetricAction(addMenu.menu, '内存', 'memory.usage');
+	addMetricAction(addMenu.menu, '温度', 'temperature.hwmon');
+	addMetricAction(addMenu.menu, '风扇', 'fan.hwmon');
 	addMetricAction(addMenu.menu, '状态演示（开发）', 'demo.status');
 	addMenu.menu.addMenuItem(new PopupSeparatorMenuItem());
-	const addSeparator = new PopupMenuItem('分隔符');
+	const addSeparator = keepMenuOpen(new PopupMenuItem('分隔符'));
 	addSeparator.connect('activate', () => saveLayout(addSeparatorSlot(layout)));
 	addMenu.menu.addMenuItem(addSeparator);
 	context._applet_context_menu.addMenuItem(addMenu);
@@ -243,7 +249,7 @@ export function createApplet(
 			if (slot.kind === 'metric') {
 				const presetMenu = new PopupSubMenuMenuItem('显示预设');
 				for (const option of metricPresetOptions) {
-					const presetItem = new PopupMenuItem(option.label);
+					const presetItem = keepMenuOpen(new PopupMenuItem(option.label));
 					presetItem.connect('activate', () =>
 						saveLayout(applySlotPreset(layout, slot.id, option.id)),
 					);
@@ -261,8 +267,10 @@ export function createApplet(
 
 				const formatMenu = new PopupSubMenuMenuItem('显示格式');
 				for (const option of metricFormatOptions[slot.metric]) {
-					const formatItem = new PopupMenuItem(
-						`${option.id === slot.format ? '✓ ' : ''}${option.label}`,
+					const formatItem = keepMenuOpen(
+						new PopupMenuItem(
+							`${option.id === slot.format ? '✓ ' : ''}${option.label}`,
+						),
 					);
 					formatItem.connect('activate', () =>
 						saveLayout(setSlotFormat(layout, slot.id, option.id)),
@@ -274,8 +282,10 @@ export function createApplet(
 				if (metricIconNames[slot.metric]) {
 					const iconMenu = new PopupSubMenuMenuItem('图标样式');
 					for (const option of iconStyleOptions) {
-						const iconItem = new PopupMenuItem(
-							`${option.id === slot.iconStyle ? '✓ ' : ''}${option.label}`,
+						const iconItem = keepMenuOpen(
+							new PopupMenuItem(
+								`${option.id === slot.iconStyle ? '✓ ' : ''}${option.label}`,
+							),
 						);
 						iconItem.connect('activate', () =>
 							saveLayout(setSlotIconStyle(layout, slot.id, option.id)),
@@ -287,27 +297,27 @@ export function createApplet(
 			}
 
 			slotMenu.menu.addMenuItem(new PopupSeparatorMenuItem());
-			const moveLeft = new PopupMenuItem('向左移动');
+			const moveLeft = keepMenuOpen(new PopupMenuItem('向左移动'));
 			moveLeft.setSensitive(canMoveSlot(layout, slot.id, 'left'));
 			moveLeft.connect('activate', () => saveLayout(moveSlot(layout, slot.id, 'left')));
 			slotMenu.menu.addMenuItem(moveLeft);
 
-			const moveRight = new PopupMenuItem('向右移动');
+			const moveRight = keepMenuOpen(new PopupMenuItem('向右移动'));
 			moveRight.setSensitive(canMoveSlot(layout, slot.id, 'right'));
 			moveRight.connect('activate', () => saveLayout(moveSlot(layout, slot.id, 'right')));
 			slotMenu.menu.addMenuItem(moveRight);
 
-			const duplicate = new PopupMenuItem('复制');
+			const duplicate = keepMenuOpen(new PopupMenuItem('复制'));
 			duplicate.connect('activate', () => saveLayout(duplicateSlot(layout, slot.id)));
 			slotMenu.menu.addMenuItem(duplicate);
 
-			const remove = new PopupMenuItem('移除');
+			const remove = keepMenuOpen(new PopupMenuItem('移除'));
 			remove.connect('activate', () => saveLayout(removeSlot(layout, slot.id)));
 			slotMenu.menu.addMenuItem(remove);
 			menu.addMenuItem(slotMenu);
 		}
 		if (layout.length > 0) menu.addMenuItem(new PopupSeparatorMenuItem());
-		const reset = new PopupMenuItem('重置当前布局');
+		const reset = keepMenuOpen(new PopupMenuItem('重置当前布局'));
 		reset.connect('activate', () => saveLayout(defaultLayout));
 		menu.addMenuItem(reset);
 	};

@@ -2,7 +2,9 @@ import type { MetricId } from '../telemetry/metrics/metric-sample';
 import type { DetailPageDefinition } from './detail-page';
 import { createCpuUsagePage } from './pages/cpu-usage/page';
 import { createDemoStatusPage } from './pages/demo-status/page';
+import { createFanPage } from './pages/fan/page';
 import { createMemoryUsagePage } from './pages/memory-usage/page';
+import { createTemperaturePage } from './pages/temperature/page';
 
 export const detailPageRegistry: Record<MetricId, DetailPageDefinition> = {
 	'cpu.usage': {
@@ -18,6 +20,23 @@ export const detailPageRegistry: Record<MetricId, DetailPageDefinition> = {
 		iconName: 'memory',
 		metricId: 'memory.usage',
 		title: '内存',
+	},
+	'temperature.hwmon': {
+		create: (ref, context) =>
+			createTemperaturePage(
+				ref as { metricId: 'temperature.hwmon'; sourceId: string },
+				context,
+			),
+		iconName: 'temperature',
+		metricId: 'temperature.hwmon',
+		title: '温度',
+	},
+	'fan.hwmon': {
+		create: (ref, context) =>
+			createFanPage(ref as { metricId: 'fan.hwmon'; sourceId: string }, context),
+		iconName: 'fan',
+		metricId: 'fan.hwmon',
+		title: '风扇',
 	},
 	'demo.status': {
 		create: (ref, context) =>

@@ -7,5 +7,35 @@
 		"type": "checkbox",
 		"default": true,
 		"description": "显示实例编号"
+	},
+	"layout": {
+		"type": "generic",
+		"default": [
+			{
+				"id": "cpu.usage",
+				"kind": "metric",
+				"metric": "cpu.usage",
+				"sourceId": "system",
+				"format": "percent",
+				"iconStyle": "regular",
+				"showLabel": true,
+				"visible": true
+			},
+			{
+				"id": "separator.system",
+				"kind": "separator",
+				"visible": true
+			},
+			{
+				"id": "memory.usage",
+				"kind": "metric",
+				"metric": "memory.usage",
+				"sourceId": "system",
+				"format": "used-total",
+				"iconStyle": "regular",
+				"showLabel": true,
+				"visible": true
+			}
+		]
 	}
 }

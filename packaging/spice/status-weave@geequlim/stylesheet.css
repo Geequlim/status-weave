@@ -1,0 +1,171 @@
+.status-weave-layout {
+	spacing: 0.6em;
+}
+
+.status-weave-metric {
+	spacing: 0.25em;
+}
+
+.status-weave-metric-group {
+	spacing: 0.25em;
+}
+
+.status-weave-icon {
+	color: inherit;
+}
+
+.status-weave-value {
+	text-align: left;
+}
+
+.status-weave-value-percent,
+.status-weave-value-memory-percent {
+	min-width: 2.65em;
+}
+
+.status-weave-value-percent-precise {
+	min-width: 3.5em;
+}
+
+.status-weave-value-memory-used {
+	min-width: 4.75em;
+}
+
+.status-weave-value-memory-used-total {
+	min-width: 8em;
+}
+
+.status-weave-value-memory-available {
+	min-width: 7.1em;
+}
+
+.status-weave-value-demo-temperature,
+.status-weave-value-demo-bytes {
+	min-width: 4.75em;
+}
+
+.status-weave-value-demo-rate {
+	min-width: 5.75em;
+}
+
+.status-weave-value-demo-rpm {
+	min-width: 4.85em;
+}
+
+.status-weave-value-grouped {
+	min-width: 0;
+}
+
+.status-weave-status-warning {
+	color: #f8e45c;
+}
+
+.status-weave-status-critical {
+	color: #ff7b63;
+}
+
+.status-weave-status-waiting,
+.status-weave-status-unavailable {
+	opacity: 0.65;
+}
+
+.status-weave-detail-header {
+	font-weight: bold;
+}
+
+.status-weave-detail-tabs-scroll {
+	max-width: 30em;
+}
+
+.status-weave-detail-header-row {
+	spacing: 0.45em;
+}
+
+.status-weave-detail-tabs {
+	spacing: 0.15em;
+}
+
+.status-weave-detail-tab-content {
+	spacing: 0.35em;
+}
+
+.popup-menu-item.status-weave-detail-tab {
+	margin: 0;
+	padding: 0.25em 0.5em;
+}
+
+.status-weave-detail-scroll {
+	min-width: 22em;
+}
+
+.status-weave-detail-page,
+.status-weave-detail-core-column {
+	spacing: 0.55em;
+}
+
+.status-weave-detail-core-list {
+	spacing: 1.4em;
+}
+
+.status-weave-detail-row {
+	spacing: 1.5em;
+}
+
+.status-weave-detail-value {
+	width: 8em;
+	text-align: right;
+}
+
+.status-weave-detail-core-column {
+	min-width: 11em;
+}
+
+.status-weave-detail-core-row {
+	spacing: 0.75em;
+}
+
+.status-weave-detail-core-headings {
+	spacing: 0.75em;
+	font-weight: bold;
+}
+
+.status-weave-detail-core-usage {
+	width: 5em;
+	text-align: right;
+}
+
+.status-weave-detail-core-frequency {
+	width: 7em;
+	text-align: right;
+}
+
+.status-weave-detail-section-title {
+	font-weight: bold;
+}
+
+.status-weave-detail-divider {
+	height: 1px;
+	background-color: rgba(128, 128, 128, 0.3);
+}
+
+.status-weave-detail-status {
+	min-width: 4.25em;
+	padding: 0.15em 0.55em;
+	border-radius: 999px;
+	background-color: rgba(128, 128, 128, 0.24);
+	color: inherit;
+	font-size: 0.9em;
+	text-align: center;
+}
+
+.status-weave-detail-status.status-weave-status-warning {
+	background-color: rgba(248, 228, 92, 0.2);
+}
+
+.status-weave-detail-status.status-weave-status-critical {
+	background-color: rgba(255, 123, 99, 0.22);
+}
+
+.status-weave-detail-empty {
+	padding: 1em;
+}

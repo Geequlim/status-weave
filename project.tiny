@@ -3,6 +3,12 @@ develop:
     - name: build
       description: 编译 TypeScript 并生成 Cinnamon applet 开发包
       command: yarn node scripts/build.mts
+      actions:
+        - name: cinnamon
+          description: 构建并使用 Cinnamon 模块加载器验证 applet 入口
+          command:
+            - yarn tiny build
+            - yarn node scripts/validate-cinnamon-module.mts
     - name: typecheck
       description: 执行 TypeScript 类型检查
       command:
@@ -32,12 +38,16 @@ develop:
         - yarn tiny format/check
         - yarn tiny lint
         - yarn tiny test
+        - yarn tiny build/cinnamon
 
 tools:
   actions:
     - name: install
-      description: 构建并安装当前开发版 Cinnamon applet
+      description: 构建、安装并重载当前开发版 Cinnamon applet
       command: yarn node scripts/install-dev.mts
     - name: uninstall
       description: 卸载当前用户的 Status Weave 开发版 applet
       command: yarn node scripts/uninstall-dev.mts
+    - name: logs
+      description: 检查最近两分钟的 Status Weave Looking Glass 日志
+      command: yarn node scripts/check-looking-glass.mts

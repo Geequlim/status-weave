@@ -1,6 +1,6 @@
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { dirname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,17 +27,45 @@ await cp(
 	join(root, 'packaging', 'spice', 'status-weave@geequlim', 'settings-schema.json'),
 	join(spice, 'settings-schema.json'),
 );
-await cp(join(root, 'build', 'settings'), join(spice, 'settings'), { recursive: true });
-await cp(join(root, 'build', 'platform'), join(spice, 'platform'), { recursive: true });
-const main = await readFile(join(root, 'build', 'applet', 'main.js'), 'utf8');
-const packagedMain = main
-	.replaceAll('require("../settings/', 'require("./settings/')
-	.replaceAll('require("../platform/', 'require("./platform/')
-	.concat('\n');
-await writeFile(join(spice, 'applet.js'), packagedMain);
-for (const modulePath of ['settings/instance-config.js', 'platform/cinnamon.js']) {
-	const moduleFile = join(spice, modulePath);
-	const moduleSource = await readFile(moduleFile, 'utf8');
-	if (!moduleSource.endsWith('\n')) await writeFile(moduleFile, `${moduleSource}\n`);
+await cp(join(root, 'packaging', 'spice', 'status-weave@geequlim', 'icons'), join(spice, 'icons'), {
+	recursive: true,
+});
+await cp(
+	join(root, 'packaging', 'spice', 'status-weave@geequlim', 'stylesheet.css'),
+	join(spice, 'stylesheet.css'),
+);
+
+const compiledRoot = join(root, 'build');
+const collectJavaScript = async (directory: string): Promise<string[]> => {
+	const files: string[] = [];
+	for (const entry of await readdir(directory, { withFileTypes: true })) {
+		if (entry.name === 'spice') continue;
+		const path = join(directory, entry.name);
+		if (entry.isDirectory()) files.push(...(await collectJavaScript(path)));
+		else if (entry.name.endsWith('.js')) files.push(path);
+	}
+	return files;
+};
+
+const rewriteRelativeRequires = (source: string, modulePath: string): string => {
+	const moduleDirectory = dirname(modulePath);
+	return source.replace(/require\("(\.{1,2}\/[^"]+)"\)/g, (_match, request: string) => {
+		const resolved = normalize(join(moduleDirectory, request)).split(sep).join('/');
+		return `require("./${resolved}")`;
+	});
+};
+
+for (const sourceFile of await collectJavaScript(compiledRoot)) {
+	const modulePath = sourceFile.slice(compiledRoot.length + 1);
+	if (modulePath === 'index.js') continue;
+
+	const targetPath = modulePath === 'applet/main.js' ? 'applet.js' : modulePath;
+	const targetFile = join(spice, targetPath);
+	const source = await readFile(sourceFile, 'utf8');
+	const packagedSource = rewriteRelativeRequires(source, modulePath)
+		.replace(/\n?\/\/# sourceMappingURL=.*$/, '')
+		.concat('\n');
+	await mkdir(dirname(targetFile), { recursive: true });
+	await writeFile(targetFile, packagedSource);
 }
 console.log(`Built Cinnamon package: ${spice}`);

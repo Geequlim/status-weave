@@ -12,8 +12,22 @@ describe('project scaffold', () => {
 		const metadata = JSON.parse(await readFile(metadataPath, 'utf8')) as {
 			uuid?: string;
 			name?: string;
+			'max-instances'?: number;
 		};
 		expect(metadata.uuid).toBe('status-weave@geequlim');
 		expect(metadata.name).toBe('Status Weave');
+		expect(metadata['max-instances']).toBe(-1);
+	});
+
+	it('vendors all CPU and memory icon styles with their license', async () => {
+		const iconRoot = join(root, 'packaging/spice/status-weave@geequlim/icons/phosphor');
+		for (const style of ['regular', 'bold', 'fill']) {
+			for (const metric of ['cpu', 'memory']) {
+				const svg = await readFile(join(iconRoot, style, `${metric}-symbolic.svg`), 'utf8');
+				expect(svg).toContain('<svg');
+				expect(svg).toContain('currentColor');
+			}
+		}
+		expect(await readFile(join(iconRoot, 'LICENSE'), 'utf8')).toContain('MIT License');
 	});
 });

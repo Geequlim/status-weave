@@ -4,6 +4,7 @@ export type MetricId =
 	| 'temperature.hwmon'
 	| 'fan.hwmon'
 	| 'gpu.device'
+	| 'network.traffic'
 	| 'demo.status';
 export type MetricStatus =
 	| 'normal'
@@ -99,6 +100,30 @@ export interface GpuDeviceValue {
 	readonly vendor: 'nvidia';
 }
 
+export interface NetworkInterfaceTraffic {
+	readonly connected: boolean;
+	readonly downloadBytesPerSecond: number | null;
+	readonly isPhysical: boolean;
+	readonly linkSpeedBitsPerSecond: number | null;
+	readonly mtu: number | null;
+	readonly name: string;
+	readonly receivedBytes: number;
+	readonly sentBytes: number;
+	readonly type: 'ethernet' | 'wifi' | 'virtual' | 'other';
+	readonly uploadBytesPerSecond: number | null;
+}
+
+export interface NetworkTrafficValue {
+	readonly defaultInterfaceName: string | null;
+	readonly downloadBytesPerSecond: number | null;
+	readonly interfaces: readonly NetworkInterfaceTraffic[];
+	readonly receivedBytes: number;
+	readonly selectedInterfaceNames: readonly string[];
+	readonly sourceLabel: string;
+	readonly sentBytes: number;
+	readonly uploadBytesPerSecond: number | null;
+}
+
 export interface CpuHardwareMetadata {
 	readonly modelName: string;
 }
@@ -120,6 +145,7 @@ export interface MetricValueMap {
 	readonly 'temperature.hwmon': HwmonTemperatureValue;
 	readonly 'fan.hwmon': HwmonFanValue;
 	readonly 'gpu.device': GpuDeviceValue;
+	readonly 'network.traffic': NetworkTrafficValue;
 	readonly 'demo.status': DemoStatusValue;
 }
 

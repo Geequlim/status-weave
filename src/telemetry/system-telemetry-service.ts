@@ -38,7 +38,7 @@ export class SystemTelemetryService {
 	constructor(
 		private readonly provider: SnapshotProvider,
 		private readonly scheduler: TelemetryScheduler,
-		private readonly intervalMilliseconds = 2000,
+		private readonly intervalMilliseconds = 1000,
 		private readonly history = new MetricHistoryStore(),
 	) {}
 

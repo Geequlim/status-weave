@@ -27,6 +27,7 @@ import {
 	setSlotFormat,
 	setSlotIconStyle,
 	setSlotShowLabel,
+	setSlotSourceId,
 	setSlotVisible,
 } from '../presentation/layout';
 import {
@@ -34,7 +35,11 @@ import {
 	formatSystemSlotPresentation,
 	formatSystemTooltip,
 } from '../presentation/system-format';
-import type { MetricId, TelemetrySnapshot } from '../telemetry/metrics/metric-sample';
+import {
+	findMetricSample,
+	type MetricId,
+	type TelemetrySnapshot,
+} from '../telemetry/metrics/metric-sample';
 import {
 	systemTelemetryService,
 	type TelemetrySubscription,
@@ -220,6 +225,7 @@ export function createApplet(
 	addMetricAction(addMenu.menu, '温度', 'temperature.hwmon');
 	addMetricAction(addMenu.menu, '风扇', 'fan.hwmon');
 	addMetricAction(addMenu.menu, 'NVIDIA 显卡', 'gpu.device');
+	addMetricAction(addMenu.menu, '网速', 'network.traffic');
 	addMetricAction(addMenu.menu, '状态演示（开发）', 'demo.status');
 	addMenu.menu.addMenuItem(new PopupSeparatorMenuItem());
 	const addSeparator = keepMenuOpen(new PopupMenuItem('分隔符'));
@@ -279,6 +285,36 @@ export function createApplet(
 					formatMenu.menu.addMenuItem(formatItem);
 				}
 				slotMenu.menu.addMenuItem(formatMenu);
+
+				if (slot.metric === 'network.traffic') {
+					const sourceMenu = new PopupSubMenuMenuItem('网络来源');
+					const automatic = latestSnapshot
+						? findMetricSample(latestSnapshot, {
+								metricId: 'network.traffic',
+								sourceId: 'network:auto',
+							})
+						: undefined;
+					const sources = [
+						{ id: 'network:auto', label: '自动主连接' },
+						{ id: 'network:physical', label: '所有物理接口' },
+						...(automatic?.value?.interfaces.map((entry) => ({
+							id: `network:interface:${entry.name}`,
+							label: entry.name,
+						})) ?? []),
+					];
+					for (const source of sources) {
+						const sourceItem = keepMenuOpen(
+							new PopupMenuItem(
+								`${source.id === slot.sourceId ? '✓ ' : ''}${source.label}`,
+							),
+						);
+						sourceItem.connect('activate', () =>
+							saveLayout(setSlotSourceId(layout, slot.id, source.id)),
+						);
+						sourceMenu.menu.addMenuItem(sourceItem);
+					}
+					slotMenu.menu.addMenuItem(sourceMenu);
+				}
 
 				if (metricIconNames[slot.metric]) {
 					const iconMenu = new PopupSubMenuMenuItem('图标样式');

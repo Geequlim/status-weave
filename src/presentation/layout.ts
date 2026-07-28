@@ -24,7 +24,11 @@ export type MetricFormatId =
 	| 'gpu-memory-used-total'
 	| 'gpu-memory-percent'
 	| 'gpu-power'
-	| 'gpu-clock';
+	| 'gpu-clock'
+	| 'network-both'
+	| 'network-download'
+	| 'network-upload'
+	| 'network-total';
 export type MetricPresetId = 'compact' | 'standard' | 'detailed';
 export type MoveDirection = 'left' | 'right';
 
@@ -75,6 +79,7 @@ export const metricLabels: Record<MetricId, string> = {
 	'temperature.hwmon': '温度',
 	'fan.hwmon': '风扇',
 	'gpu.device': 'NVIDIA 显卡',
+	'network.traffic': '网速',
 	'demo.status': '状态演示',
 };
 
@@ -108,6 +113,12 @@ export const metricFormatOptions: Record<MetricId, readonly FormatOption[]> = {
 		{ id: 'gpu-power', label: '功耗 · 22.8 W' },
 		{ id: 'gpu-clock', label: '核心频率 · 1.03 GHz' },
 	],
+	'network.traffic': [
+		{ id: 'network-both', label: '下载和上传 · ↓ 12.3 M  ↑ 1.20 M' },
+		{ id: 'network-download', label: '仅下载 · ↓ 12.3 M' },
+		{ id: 'network-upload', label: '仅上传 · ↑ 1.20 M' },
+		{ id: 'network-total', label: '合计 · 13.5 M' },
+	],
 	'demo.status': [
 		{ id: 'percent', label: '整数百分比 · 42%' },
 		{ id: 'percent-precise', label: '精确百分比 · 42.0%' },
@@ -130,6 +141,7 @@ const defaultFormats: Record<MetricId, MetricFormatId> = {
 	'temperature.hwmon': 'temperature-primary',
 	'fan.hwmon': 'fan-primary',
 	'gpu.device': 'gpu-utilization',
+	'network.traffic': 'network-both',
 	'demo.status': 'percent',
 };
 
@@ -139,6 +151,7 @@ const defaultIconStyles: Record<MetricId, IconStyle> = {
 	'temperature.hwmon': 'regular',
 	'fan.hwmon': 'regular',
 	'gpu.device': 'regular',
+	'network.traffic': 'regular',
 	'demo.status': 'none',
 };
 
@@ -148,18 +161,20 @@ const defaultSourceIds: Record<MetricId, string> = {
 	'temperature.hwmon': 'system',
 	'fan.hwmon': 'system',
 	'gpu.device': 'nvidia:0',
+	'network.traffic': 'network:auto',
 	'demo.status': 'synthetic',
 };
 
 export const metricIconNames: Record<
 	MetricId,
-	'cpu' | 'memory' | 'temperature' | 'fan' | 'gpu' | null
+	'cpu' | 'memory' | 'temperature' | 'fan' | 'gpu' | 'network' | null
 > = {
 	'cpu.usage': 'cpu',
 	'memory.usage': 'memory',
 	'temperature.hwmon': 'temperature',
 	'fan.hwmon': 'fan',
 	'gpu.device': 'gpu',
+	'network.traffic': 'network',
 	'demo.status': null,
 };
 
@@ -193,6 +208,7 @@ const isMetricId = (value: unknown): value is MetricId =>
 	value === 'temperature.hwmon' ||
 	value === 'fan.hwmon' ||
 	value === 'gpu.device' ||
+	value === 'network.traffic' ||
 	value === 'demo.status';
 
 const isMetricFormat = (metric: MetricId, value: unknown): value is MetricFormatId =>
@@ -363,6 +379,18 @@ export function setSlotShowLabel(
 	);
 }
 
+export function setSlotSourceId(
+	layout: readonly LayoutSlot[],
+	id: string,
+	sourceId: string,
+): LayoutSlot[] {
+	return layout.map((slot) =>
+		slot.id === id && slot.kind === 'metric' && sourceId
+			? { ...slot, sourceId }
+			: cloneSlot(slot),
+	);
+}
+
 export function applySlotPreset(
 	layout: readonly LayoutSlot[],
 	id: string,
@@ -395,6 +423,11 @@ export function applySlotPreset(
 				compact: 'gpu-utilization',
 				standard: 'gpu-utilization',
 				detailed: 'gpu-temperature',
+			},
+			'network.traffic': {
+				compact: 'network-download',
+				standard: 'network-both',
+				detailed: 'network-both',
 			},
 			'demo.status': {
 				compact: 'percent',

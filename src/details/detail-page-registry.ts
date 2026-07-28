@@ -5,6 +5,7 @@ import { createDemoStatusPage } from './pages/demo-status/page';
 import { createFanPage } from './pages/fan/page';
 import { createGpuPage } from './pages/gpu/page';
 import { createMemoryUsagePage } from './pages/memory-usage/page';
+import { createNetworkPage } from './pages/network/page';
 import { createTemperaturePage } from './pages/temperature/page';
 
 export const detailPageRegistry: Record<MetricId, DetailPageDefinition> = {
@@ -45,6 +46,13 @@ export const detailPageRegistry: Record<MetricId, DetailPageDefinition> = {
 		iconName: 'gpu',
 		metricId: 'gpu.device',
 		title: 'GPU',
+	},
+	'network.traffic': {
+		create: (ref, context) =>
+			createNetworkPage(ref as { metricId: 'network.traffic'; sourceId: string }, context),
+		iconName: 'network',
+		metricId: 'network.traffic',
+		title: '网络',
 	},
 	'demo.status': {
 		create: (ref, context) =>

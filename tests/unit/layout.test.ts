@@ -12,6 +12,7 @@ import {
 	setSlotFormat,
 	setSlotIconStyle,
 	setSlotShowLabel,
+	setSlotSourceId,
 	setSlotVisible,
 } from '../../src/presentation/layout';
 
@@ -115,6 +116,18 @@ describe('instance layout', () => {
 			iconStyle: 'regular',
 			format: 'gpu-utilization',
 		});
+	});
+
+	it('adds automatic network traffic and allows selecting one interface', () => {
+		let layout = addMetricSlot([], 'network.traffic');
+		expect(layout[0]).toMatchObject({
+			format: 'network-both',
+			iconStyle: 'regular',
+			metric: 'network.traffic',
+			sourceId: 'network:auto',
+		});
+		layout = setSlotSourceId(layout, 'network.traffic', 'network:interface:wlp1s0');
+		expect(layout[0]).toMatchObject({ sourceId: 'network:interface:wlp1s0' });
 	});
 
 	it('keeps a hidden slot in place so showing it restores its position', () => {

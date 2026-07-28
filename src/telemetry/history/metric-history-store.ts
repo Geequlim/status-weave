@@ -14,17 +14,20 @@ export const defaultHistoryRetention: HistoryRetention = {
 
 export class MetricHistoryStore {
 	private readonly buffers = new Map<string, HistoryBuffer<AnyMetricSample>>();
+	private readonly latestSampledAt = new Map<string, number>();
 
 	constructor(private readonly retention: HistoryRetention = defaultHistoryRetention) {}
 
 	record(sample: AnyMetricSample): void {
 		const key = metricKey(sample);
+		if (this.latestSampledAt.get(key) === sample.sampledAt) return;
 		let buffer = this.buffers.get(key);
 		if (!buffer) {
 			buffer = new HistoryBuffer<AnyMetricSample>(this.retention);
 			this.buffers.set(key, buffer);
 		}
 		buffer.append(sample);
+		this.latestSampledAt.set(key, sample.sampledAt);
 	}
 
 	query<K extends MetricId>(

@@ -6,6 +6,7 @@ import {
 import { createFanPageModel } from '../../src/details/pages/fan/model';
 import { createGpuPageModel, shortGpuName } from '../../src/details/pages/gpu/model';
 import { createMemoryUsagePageModel } from '../../src/details/pages/memory-usage/model';
+import { createNetworkPageModel } from '../../src/details/pages/network/model';
 import {
 	calculateTemperatureColumnCount,
 	createTemperaturePageModel,
@@ -205,5 +206,53 @@ describe('detail page models', () => {
 				].map((row) => expect.objectContaining(row)),
 			),
 		);
+	});
+
+	it('formats network totals and every discovered interface', () => {
+		const sample: MetricSample<'network.traffic'> = {
+			metricId: 'network.traffic',
+			sampledAt: 1100,
+			sourceId: 'network:auto',
+			status: 'normal',
+			value: {
+				defaultInterfaceName: 'wlp1s0',
+				downloadBytesPerSecond: 12_400_000,
+				interfaces: [
+					{
+						connected: true,
+						downloadBytesPerSecond: 12_400_000,
+						isPhysical: true,
+						linkSpeedBitsPerSecond: null,
+						mtu: 1500,
+						name: 'wlp1s0',
+						receivedBytes: 4_000_000_000,
+						sentBytes: 500_000_000,
+						type: 'wifi',
+						uploadBytesPerSecond: 1_200_000,
+					},
+				],
+				receivedBytes: 4_000_000_000,
+				selectedInterfaceNames: ['wlp1s0'],
+				sentBytes: 500_000_000,
+				sourceLabel: 'wlp1s0',
+				uploadBytesPerSecond: 1_200_000,
+			},
+		};
+		expect(createNetworkPageModel(sample)).toMatchObject({
+			badge: 'wlp1s0',
+			defaultInterface: 'wlp1s0',
+			download: '12.4 MB/s',
+			interfaces: [
+				{
+					connected: true,
+					id: 'wlp1s0',
+					label: 'wlp1s0（Wi-Fi）',
+					value: '↓ 12.4 MB/s  ↑ 1.2 MB/s',
+				},
+			],
+			received: '4.0 GB',
+			sent: '500.0 MB',
+			upload: '1.2 MB/s',
+		});
 	});
 });

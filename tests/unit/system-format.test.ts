@@ -203,4 +203,35 @@ describe('system label layout', () => {
 			expect(formatSystemLabel(gpu, layout)).toBe(label);
 		}
 	});
+
+	it('keeps network panel units compact while tooltips use rates', () => {
+		const network: TelemetrySnapshot = {
+			sampledAt: 5,
+			samples: [
+				{
+					metricId: 'network.traffic',
+					sampledAt: 5,
+					sourceId: 'network:auto',
+					status: 'normal',
+					value: {
+						defaultInterfaceName: 'wlp1s0',
+						downloadBytesPerSecond: 12_400_000,
+						interfaces: [],
+						receivedBytes: 4_000_000_000,
+						selectedInterfaceNames: ['wlp1s0'],
+						sentBytes: 500_000_000,
+						sourceLabel: 'wlp1s0',
+						uploadBytesPerSecond: 1_200_000,
+					},
+				},
+			],
+		};
+		const layout = setSlotShowLabel(
+			addMetricSlot([], 'network.traffic'),
+			'network.traffic',
+			false,
+		);
+		expect(formatSystemLabel(network, layout)).toBe('↓ 12.4 M  ↑ 1.20 M');
+		expect(formatSystemTooltip(network, 3, layout)).toContain('↓ 12.4 MB/s  ↑ 1.2 MB/s · 正常');
+	});
 });

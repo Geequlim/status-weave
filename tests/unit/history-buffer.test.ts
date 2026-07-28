@@ -51,6 +51,14 @@ describe('HistoryBuffer', () => {
 		});
 		history.record({
 			metricId: 'cpu.usage',
+			sourceId: 'system',
+			sampledAt: 2,
+			status: 'unavailable',
+			value: null,
+			error: 'CPU: unavailable',
+		});
+		history.record({
+			metricId: 'cpu.usage',
 			sourceId: 'other',
 			sampledAt: 2,
 			status: 'normal',

@@ -14,8 +14,10 @@ import {
 import {
 	formatBinaryBytes,
 	formatByteRate,
+	formatCompactNetworkRate,
 	formatFrequencyHertz,
 	formatGigabytes,
+	formatNetworkRate,
 	formatPercentage,
 	formatRpm,
 	formatTemperature,
@@ -147,11 +149,51 @@ function formatGpu(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 	}
 }
 
+function formatNetwork(snapshot: TelemetrySnapshot, slot: MetricSlot, compact = true): string {
+	const sample = findMetricSample(snapshot, {
+		metricId: 'network.traffic',
+		sourceId: slot.sourceId,
+	});
+	if (!sample?.value || sample.status === 'unavailable') return '离线';
+	const download =
+		sample.value.downloadBytesPerSecond === null
+			? '—'
+			: compact
+				? formatCompactNetworkRate(sample.value.downloadBytesPerSecond)
+				: formatNetworkRate(sample.value.downloadBytesPerSecond);
+	const upload =
+		sample.value.uploadBytesPerSecond === null
+			? '—'
+			: compact
+				? formatCompactNetworkRate(sample.value.uploadBytesPerSecond)
+				: formatNetworkRate(sample.value.uploadBytesPerSecond);
+	switch (slot.format) {
+		case 'network-download':
+			return `↓ ${download}`;
+		case 'network-upload':
+			return `↑ ${upload}`;
+		case 'network-total':
+			return sample.value.downloadBytesPerSecond === null ||
+				sample.value.uploadBytesPerSecond === null
+				? '—'
+				: compact
+					? formatCompactNetworkRate(
+							sample.value.downloadBytesPerSecond + sample.value.uploadBytesPerSecond,
+						)
+					: formatNetworkRate(
+							sample.value.downloadBytesPerSecond + sample.value.uploadBytesPerSecond,
+						);
+		default:
+			return `↓ ${download}  ↑ ${upload}`;
+	}
+}
+
 function widthClass(metric: MetricSlot['metric'], format: MetricFormatId): string {
 	if (metric === 'memory.usage') return `memory-${format}`;
 	if (metric === 'temperature.hwmon') return format;
 	if (metric === 'fan.hwmon') return format;
 	if (metric === 'gpu.device') return format;
+	if (metric === 'network.traffic') return format;
 	if (metric === 'demo.status' && !format.startsWith('percent')) return `demo-${format}`;
 	if (format === 'percent-precise') return 'percent-precise';
 	return 'percent';
@@ -176,7 +218,9 @@ export function formatSystemSlotPresentation(
 						? formatHwmonFan(snapshot, slot)
 						: slot.metric === 'gpu.device'
 							? formatGpu(snapshot, slot)
-							: formatDemo(snapshot, slot);
+							: slot.metric === 'network.traffic'
+								? formatNetwork(snapshot, slot)
+								: formatDemo(snapshot, slot);
 	return {
 		label: slot.showLabel
 			? slot.metric === 'memory.usage'
@@ -187,9 +231,11 @@ export function formatSystemSlotPresentation(
 						? 'FAN'
 						: slot.metric === 'gpu.device'
 							? 'GPU'
-							: slot.metric === 'demo.status'
-								? '演示'
-								: 'CPU'
+							: slot.metric === 'network.traffic'
+								? 'NET'
+								: slot.metric === 'demo.status'
+									? '演示'
+									: 'CPU'
 			: null,
 		status: sample?.status ?? 'unavailable',
 		value,
@@ -217,6 +263,11 @@ export function formatSystemLabel(
 
 function sourceLabel(slot: MetricSlot): string {
 	if (slot.sourceId === 'synthetic') return '虚拟数据源';
+	if (slot.metric === 'network.traffic') {
+		if (slot.sourceId === 'network:auto') return '自动主连接';
+		if (slot.sourceId === 'network:physical') return '所有物理接口';
+		return slot.sourceId.replace('network:interface:', '');
+	}
 	if (slot.sourceId !== 'system') return slot.sourceId;
 	if (slot.metric === 'cpu.usage') return '系统 CPU';
 	if (slot.metric === 'memory.usage') return '系统内存';
@@ -227,6 +278,7 @@ function sourceLabel(slot: MetricSlot): string {
 function unitLabel(slot: MetricSlot): string {
 	if (slot.metric === 'temperature.hwmon') return '°C';
 	if (slot.metric === 'fan.hwmon') return 'RPM';
+	if (slot.metric === 'network.traffic') return 'B/s';
 	if (slot.metric === 'gpu.device') {
 		switch (slot.format) {
 			case 'gpu-temperature':
@@ -273,9 +325,13 @@ export function formatSystemTooltip(
 			sourceId: slot.sourceId,
 		});
 		const presentation = formatSystemSlotPresentation(snapshot, slot);
+		const value =
+			slot.metric === 'network.traffic'
+				? formatNetwork(snapshot, slot, false)
+				: presentation.value;
 		lines.push(
 			`${metricLabels[slot.metric]}（${sourceLabel(slot)}，${unitLabel(slot)}）`,
-			`${presentation.value} · ${metricStatusLabels[presentation.status]}`,
+			`${value} · ${metricStatusLabels[presentation.status]}`,
 		);
 		if (sample?.error) lines.push(`原因：${sample.error}`);
 	}

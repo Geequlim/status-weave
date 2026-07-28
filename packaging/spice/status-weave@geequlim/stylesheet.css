@@ -80,6 +80,19 @@
 	min-width: 0;
 }
 
+.status-weave-value-network-both {
+	width: 10.25em;
+}
+
+.status-weave-value-network-download,
+.status-weave-value-network-upload {
+	width: 4.75em;
+}
+
+.status-weave-value-network-total {
+	width: 3.5em;
+}
+
 .status-weave-value-grouped {
 	min-width: 0;
 }
@@ -153,6 +166,15 @@
 
 .status-weave-detail-fan-list {
 	spacing: 0.55em;
+}
+
+.status-weave-detail-network-list {
+	spacing: 0.55em;
+}
+
+.status-weave-detail-network-value {
+	min-width: 15em;
+	text-align: right;
 }
 
 .status-weave-detail-row {

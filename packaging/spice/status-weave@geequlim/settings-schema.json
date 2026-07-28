@@ -1,0 +1,11 @@
+{
+	"label": {
+		"type": "header",
+		"description": "Status Weave"
+	},
+	"show-instance-id": {
+		"type": "checkbox",
+		"default": true,
+		"description": "显示实例编号"
+	}
+}

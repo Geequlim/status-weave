@@ -1,0 +1,6 @@
+build/
+node_modules/
+.yarn/*
+!.yarn/releases/
+!.yarn/releases/yarn-4.17.1.cjs
+.pnp.*

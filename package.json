@@ -1,0 +1,22 @@
+{
+	"name": "status-weave",
+	"version": "0.1.0",
+	"private": true,
+	"description": "面向 Cinnamon 面板的可扩展系统状态监控 applet",
+	"license": "MIT",
+	"author": "Geequlim",
+	"devDependencies": {
+		"@ci-types/cjs": "latest",
+		"@tinyaxis/toolkit": "0.3.0",
+		"@types/node": "24",
+		"oxfmt": "0.59.0",
+		"oxlint": "1.70.0",
+		"oxlint-tsgolint": "0.23.0",
+		"typescript": "7.0.2",
+		"vitest": "3.2.4"
+	},
+	"packageManager": "yarn@4.17.1",
+	"engines": {
+		"node": ">=24"
+	}
+}

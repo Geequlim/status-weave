@@ -1,0 +1,43 @@
+develop:
+  actions:
+    - name: build
+      description: 编译 TypeScript 并生成 Cinnamon applet 开发包
+      command: yarn node scripts/build.mts
+    - name: typecheck
+      description: 执行 TypeScript 类型检查
+      command:
+        - yarn tsc -p tsconfig.json --noEmit
+        - yarn tsc -p tsconfig.scripts.json
+    - name: format
+      description: 使用 Oxfmt 格式化源码
+      command: yarn oxfmt src scripts tests
+      actions:
+        - name: check
+          description: 检查源码格式
+          command: yarn oxfmt --check src scripts tests
+    - name: lint
+      description: 使用 Oxlint 执行静态代码检查
+      command: yarn oxlint -c oxlint.config.mts -f stylish src scripts tests
+      actions:
+        - name: fix
+          description: 自动修复 Oxlint 问题
+          command: yarn oxlint -c oxlint.config.mts -f stylish src scripts tests --fix
+    - name: test
+      description: 执行基础工程检查
+      command: yarn vitest run
+    - name: check
+      description: 执行完整质量检查
+      command:
+        - yarn tiny typecheck
+        - yarn tiny format/check
+        - yarn tiny lint
+        - yarn tiny test
+
+tools:
+  actions:
+    - name: install
+      description: 构建并安装当前开发版 Cinnamon applet
+      command: yarn node scripts/install-dev.mts
+    - name: uninstall
+      description: 卸载当前用户的 Status Weave 开发版 applet
+      command: yarn node scripts/uninstall-dev.mts

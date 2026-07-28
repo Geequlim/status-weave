@@ -1,0 +1,8 @@
+{
+	"uuid": "status-weave@geequlim",
+	"name": "Status Weave",
+	"description": "Cinnamon 面板系统状态监控 applet（开发中）",
+	"version": "0.1.0",
+	"author": "Geequlim",
+	"website": "https://github.com/geequlim/status-weave"
+}

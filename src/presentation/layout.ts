@@ -17,7 +17,14 @@ export type MetricFormatId =
 	| 'temperature-average'
 	| 'fan-primary'
 	| 'fan-peak'
-	| 'fan-average';
+	| 'fan-average'
+	| 'gpu-utilization'
+	| 'gpu-temperature'
+	| 'gpu-memory-used'
+	| 'gpu-memory-used-total'
+	| 'gpu-memory-percent'
+	| 'gpu-power'
+	| 'gpu-clock';
 export type MetricPresetId = 'compact' | 'standard' | 'detailed';
 export type MoveDirection = 'left' | 'right';
 
@@ -67,6 +74,7 @@ export const metricLabels: Record<MetricId, string> = {
 	'memory.usage': '内存',
 	'temperature.hwmon': '温度',
 	'fan.hwmon': '风扇',
+	'gpu.device': 'NVIDIA 显卡',
 	'demo.status': '状态演示',
 };
 
@@ -77,19 +85,28 @@ export const metricFormatOptions: Record<MetricId, readonly FormatOption[]> = {
 	],
 	'memory.usage': [
 		{ id: 'percent', label: '占用百分比 · 24%' },
-		{ id: 'used', label: '已用量 · 7.4 GiB' },
-		{ id: 'used-total', label: '已用 / 总量 · 7.4 / 31.1 GiB' },
-		{ id: 'available', label: '可用量 · 可用 23.7 GiB' },
+		{ id: 'used', label: '已用量 · 7.4 GB' },
+		{ id: 'used-total', label: '已用 / 总量 · 7.4 / 31.1 GB' },
+		{ id: 'available', label: '可用量 · 可用 23.7 GB' },
 	],
 	'temperature.hwmon': [
 		{ id: 'temperature-primary', label: '主要温度 · 56.0 °C' },
-		{ id: 'temperature-peak', label: '最高温度 · 最高 56.0 °C' },
-		{ id: 'temperature-average', label: '平均温度 · 平均 47.2 °C' },
+		{ id: 'temperature-peak', label: '最高温度 · 56.0 °C' },
+		{ id: 'temperature-average', label: '平均温度 · 47.2 °C' },
 	],
 	'fan.hwmon': [
 		{ id: 'fan-primary', label: '主要风扇 · 1800 RPM' },
-		{ id: 'fan-peak', label: '最高转速 · 最高 2500 RPM' },
-		{ id: 'fan-average', label: '平均转速 · 平均 2182 RPM' },
+		{ id: 'fan-peak', label: '最高转速 · 2500 RPM' },
+		{ id: 'fan-average', label: '平均转速 · 2182 RPM' },
+	],
+	'gpu.device': [
+		{ id: 'gpu-utilization', label: '利用率 · 18%' },
+		{ id: 'gpu-temperature', label: '温度 · 56.0 °C' },
+		{ id: 'gpu-memory-used', label: '显存已用量 · 1.3 GB' },
+		{ id: 'gpu-memory-used-total', label: '显存已用 / 总量 · 1.3 / 12.0 GB' },
+		{ id: 'gpu-memory-percent', label: '显存占用 · 11%' },
+		{ id: 'gpu-power', label: '功耗 · 22.8 W' },
+		{ id: 'gpu-clock', label: '核心频率 · 1.03 GHz' },
 	],
 	'demo.status': [
 		{ id: 'percent', label: '整数百分比 · 42%' },
@@ -112,6 +129,7 @@ const defaultFormats: Record<MetricId, MetricFormatId> = {
 	'memory.usage': 'used-total',
 	'temperature.hwmon': 'temperature-primary',
 	'fan.hwmon': 'fan-primary',
+	'gpu.device': 'gpu-utilization',
 	'demo.status': 'percent',
 };
 
@@ -120,6 +138,7 @@ const defaultIconStyles: Record<MetricId, IconStyle> = {
 	'memory.usage': 'regular',
 	'temperature.hwmon': 'regular',
 	'fan.hwmon': 'regular',
+	'gpu.device': 'regular',
 	'demo.status': 'none',
 };
 
@@ -128,14 +147,19 @@ const defaultSourceIds: Record<MetricId, string> = {
 	'memory.usage': 'system',
 	'temperature.hwmon': 'system',
 	'fan.hwmon': 'system',
+	'gpu.device': 'nvidia:0',
 	'demo.status': 'synthetic',
 };
 
-export const metricIconNames: Record<MetricId, 'cpu' | 'memory' | 'temperature' | 'fan' | null> = {
+export const metricIconNames: Record<
+	MetricId,
+	'cpu' | 'memory' | 'temperature' | 'fan' | 'gpu' | null
+> = {
 	'cpu.usage': 'cpu',
 	'memory.usage': 'memory',
 	'temperature.hwmon': 'temperature',
 	'fan.hwmon': 'fan',
+	'gpu.device': 'gpu',
 	'demo.status': null,
 };
 
@@ -168,6 +192,7 @@ const isMetricId = (value: unknown): value is MetricId =>
 	value === 'memory.usage' ||
 	value === 'temperature.hwmon' ||
 	value === 'fan.hwmon' ||
+	value === 'gpu.device' ||
 	value === 'demo.status';
 
 const isMetricFormat = (metric: MetricId, value: unknown): value is MetricFormatId =>
@@ -365,6 +390,11 @@ export function applySlotPreset(
 				compact: 'fan-primary',
 				standard: 'fan-primary',
 				detailed: 'fan-peak',
+			},
+			'gpu.device': {
+				compact: 'gpu-utilization',
+				standard: 'gpu-utilization',
+				detailed: 'gpu-temperature',
 			},
 			'demo.status': {
 				compact: 'percent',

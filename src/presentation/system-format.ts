@@ -14,10 +14,12 @@ import {
 import {
 	formatBinaryBytes,
 	formatByteRate,
-	formatGibibytes,
+	formatFrequencyHertz,
+	formatGigabytes,
 	formatPercentage,
 	formatRpm,
 	formatTemperature,
+	formatWatts,
 } from './value-format';
 
 export interface SystemSlotPresentation {
@@ -46,9 +48,9 @@ function formatMemory(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 		sourceId: slot.sourceId,
 	})?.value;
 	if (!memory) return '—';
-	const used = formatGibibytes(memory.usedBytes);
-	const total = formatGibibytes(memory.totalBytes);
-	const available = formatGibibytes(memory.availableBytes);
+	const used = formatGigabytes(memory.usedBytes);
+	const total = formatGigabytes(memory.totalBytes);
+	const available = formatGigabytes(memory.availableBytes);
 	switch (slot.format) {
 		case 'percent':
 			return formatPercentage(memory.usagePercent);
@@ -57,7 +59,7 @@ function formatMemory(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 		case 'available':
 			return `可用 ${available}`;
 		default:
-			return `${used.slice(0, used.lastIndexOf(' '))} / ${total}`;
+			return `${used.replace(' GB', '')} / ${total}`;
 	}
 }
 
@@ -88,10 +90,10 @@ function formatHwmonTemperature(snapshot: TelemetrySnapshot, slot: MetricSlot): 
 	})?.value;
 	if (!value) return '—';
 	if (slot.format === 'temperature-peak') {
-		return `最高 ${formatTemperature(value.peakCelsius)}`;
+		return `${formatTemperature(value.peakCelsius)}`;
 	}
 	if (slot.format === 'temperature-average') {
-		return `平均 ${formatTemperature(value.averageCelsius)}`;
+		return `${formatTemperature(value.averageCelsius)}`;
 	}
 	return formatTemperature(value.primaryCelsius);
 }
@@ -102,15 +104,54 @@ function formatHwmonFan(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 		sourceId: slot.sourceId,
 	})?.value;
 	if (!value) return '—';
-	if (slot.format === 'fan-peak') return `最高 ${formatRpm(value.peakRpm)}`;
-	if (slot.format === 'fan-average') return `平均 ${formatRpm(value.averageRpm)}`;
+	if (slot.format === 'fan-peak') return `${formatRpm(value.peakRpm)}`;
+	if (slot.format === 'fan-average') return `${formatRpm(value.averageRpm)}`;
 	return formatRpm(value.primaryRpm);
+}
+
+function formatGpu(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
+	const sample = findMetricSample(snapshot, {
+		metricId: 'gpu.device',
+		sourceId: slot.sourceId,
+	});
+	if (sample?.status === 'sleeping') return '休眠';
+	const value = sample?.value;
+	if (!value) return '—';
+	switch (slot.format) {
+		case 'gpu-temperature':
+			return value.temperatureCelsius === null
+				? '—'
+				: formatTemperature(value.temperatureCelsius);
+		case 'gpu-memory-used':
+			return value.memoryUsedBytes === null ? '—' : formatGigabytes(value.memoryUsedBytes);
+		case 'gpu-memory-used-total':
+			return value.memoryUsedBytes === null || value.memoryTotalBytes === null
+				? '—'
+				: `${formatGigabytes(value.memoryUsedBytes).replace(' GB', '')} / ${formatGigabytes(
+						value.memoryTotalBytes,
+					)}`;
+		case 'gpu-memory-percent':
+			return value.memoryUsedBytes === null ||
+				value.memoryTotalBytes === null ||
+				value.memoryTotalBytes === 0
+				? '—'
+				: formatPercentage((value.memoryUsedBytes / value.memoryTotalBytes) * 100);
+		case 'gpu-power':
+			return value.powerWatts === null ? '—' : formatWatts(value.powerWatts);
+		case 'gpu-clock':
+			return value.graphicsClockHertz === null
+				? '—'
+				: formatFrequencyHertz(value.graphicsClockHertz);
+		default:
+			return formatOptionalPercentage(value.utilizationPercent, false);
+	}
 }
 
 function widthClass(metric: MetricSlot['metric'], format: MetricFormatId): string {
 	if (metric === 'memory.usage') return `memory-${format}`;
 	if (metric === 'temperature.hwmon') return format;
 	if (metric === 'fan.hwmon') return format;
+	if (metric === 'gpu.device') return format;
 	if (metric === 'demo.status' && !format.startsWith('percent')) return `demo-${format}`;
 	if (format === 'percent-precise') return 'percent-precise';
 	return 'percent';
@@ -133,7 +174,9 @@ export function formatSystemSlotPresentation(
 					? formatHwmonTemperature(snapshot, slot)
 					: slot.metric === 'fan.hwmon'
 						? formatHwmonFan(snapshot, slot)
-						: formatDemo(snapshot, slot);
+						: slot.metric === 'gpu.device'
+							? formatGpu(snapshot, slot)
+							: formatDemo(snapshot, slot);
 	return {
 		label: slot.showLabel
 			? slot.metric === 'memory.usage'
@@ -142,9 +185,11 @@ export function formatSystemSlotPresentation(
 					? 'TEMP'
 					: slot.metric === 'fan.hwmon'
 						? 'FAN'
-						: slot.metric === 'demo.status'
-							? '演示'
-							: 'CPU'
+						: slot.metric === 'gpu.device'
+							? 'GPU'
+							: slot.metric === 'demo.status'
+								? '演示'
+								: 'CPU'
 			: null,
 		status: sample?.status ?? 'unavailable',
 		value,
@@ -175,12 +220,28 @@ function sourceLabel(slot: MetricSlot): string {
 	if (slot.sourceId !== 'system') return slot.sourceId;
 	if (slot.metric === 'cpu.usage') return '系统 CPU';
 	if (slot.metric === 'memory.usage') return '系统内存';
+	if (slot.metric === 'gpu.device') return 'NVIDIA GPU';
 	return 'hwmon';
 }
 
 function unitLabel(slot: MetricSlot): string {
 	if (slot.metric === 'temperature.hwmon') return '°C';
 	if (slot.metric === 'fan.hwmon') return 'RPM';
+	if (slot.metric === 'gpu.device') {
+		switch (slot.format) {
+			case 'gpu-temperature':
+				return '°C';
+			case 'gpu-memory-used':
+			case 'gpu-memory-used-total':
+				return 'GB';
+			case 'gpu-power':
+				return 'W';
+			case 'gpu-clock':
+				return 'GHz';
+			default:
+				return '%';
+		}
+	}
 	if (slot.metric === 'demo.status') {
 		switch (slot.format) {
 			case 'temperature':
@@ -196,7 +257,7 @@ function unitLabel(slot: MetricSlot): string {
 		}
 	}
 	if (slot.metric !== 'memory.usage' || slot.format === 'percent') return '%';
-	return 'GiB';
+	return 'GB';
 }
 
 export function formatSystemTooltip(

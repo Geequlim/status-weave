@@ -3,7 +3,7 @@ import {
 	formatBinaryBytes,
 	formatByteRate,
 	formatFrequencyHertz,
-	formatGibibytes,
+	formatGigabytes,
 	formatPercentage,
 	formatRpm,
 	formatTemperature,
@@ -14,7 +14,7 @@ describe('value formatters', () => {
 		expect(formatPercentage(42.44)).toBe('42%');
 		expect(formatPercentage(42.44, 1)).toBe('42.4%');
 		expect(formatBinaryBytes(7.4 * 1024 ** 3)).toBe('7.4 GiB');
-		expect(formatGibibytes(0.2 * 1024 ** 3)).toBe('0.2 GiB');
+		expect(formatGigabytes(1_300_000_000)).toBe('1.3 GB');
 		expect(formatByteRate(125.6 * 1024 ** 2)).toBe('125.6 MiB/s');
 		expect(formatTemperature(68.44)).toBe('68.4 °C');
 		expect(formatRpm(1419.6)).toBe('1420 RPM');

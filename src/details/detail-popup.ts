@@ -140,16 +140,7 @@ export function createDetailPopup(dependencies: DetailPopupDependencies): Detail
 			});
 			const tabs = new St.BoxLayout({ style_class: 'status-weave-detail-tabs' });
 			for (const page of pages) tabs.add_child(createTabButton(page));
-			if (pages.length > 4) {
-				const tabsScroll = new St.ScrollView({
-					style_class: 'status-weave-detail-tabs-scroll',
-				});
-				tabsScroll.set_policy(St.PolicyType.AUTOMATIC, St.PolicyType.NEVER);
-				tabsScroll.add_actor(tabs);
-				tabsItem.addActor(tabsScroll, { expand: true, span: -1 });
-			} else {
-				tabsItem.addActor(tabs, { expand: true, span: -1 });
-			}
+			tabsItem.addActor(tabs, { expand: true, span: -1 });
 		}
 		if (
 			tabsItem &&

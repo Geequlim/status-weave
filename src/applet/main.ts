@@ -219,6 +219,7 @@ export function createApplet(
 	addMetricAction(addMenu.menu, '内存', 'memory.usage');
 	addMetricAction(addMenu.menu, '温度', 'temperature.hwmon');
 	addMetricAction(addMenu.menu, '风扇', 'fan.hwmon');
+	addMetricAction(addMenu.menu, 'NVIDIA 显卡', 'gpu.device');
 	addMetricAction(addMenu.menu, '状态演示（开发）', 'demo.status');
 	addMenu.menu.addMenuItem(new PopupSeparatorMenuItem());
 	const addSeparator = keepMenuOpen(new PopupMenuItem('分隔符'));

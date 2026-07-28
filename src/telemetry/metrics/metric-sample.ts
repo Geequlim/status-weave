@@ -3,8 +3,15 @@ export type MetricId =
 	| 'memory.usage'
 	| 'temperature.hwmon'
 	| 'fan.hwmon'
+	| 'gpu.device'
 	| 'demo.status';
-export type MetricStatus = 'normal' | 'warning' | 'critical' | 'waiting' | 'unavailable';
+export type MetricStatus =
+	| 'normal'
+	| 'warning'
+	| 'critical'
+	| 'sleeping'
+	| 'waiting'
+	| 'unavailable';
 
 export interface CpuCoreUsage {
 	readonly frequencyHertz: number | null;
@@ -73,6 +80,25 @@ export interface HwmonFanValue {
 	readonly sensors: readonly HwmonFanSensor[];
 }
 
+export interface GpuDeviceValue {
+	readonly deviceId: string;
+	readonly driverVersion: string;
+	readonly graphicsClockHertz: number | null;
+	readonly index: number;
+	readonly memoryClockHertz: number | null;
+	readonly memoryTotalBytes: number | null;
+	readonly memoryUsedBytes: number | null;
+	readonly name: string;
+	readonly operationalState: 'active' | 'sleeping';
+	readonly pciBusId: string;
+	readonly performanceState: string | null;
+	readonly powerLimitWatts: number | null;
+	readonly powerWatts: number | null;
+	readonly temperatureCelsius: number | null;
+	readonly utilizationPercent: number | null;
+	readonly vendor: 'nvidia';
+}
+
 export interface CpuHardwareMetadata {
 	readonly modelName: string;
 }
@@ -93,6 +119,7 @@ export interface MetricValueMap {
 	readonly 'memory.usage': MemoryUsageValue;
 	readonly 'temperature.hwmon': HwmonTemperatureValue;
 	readonly 'fan.hwmon': HwmonFanValue;
+	readonly 'gpu.device': GpuDeviceValue;
 	readonly 'demo.status': DemoStatusValue;
 }
 

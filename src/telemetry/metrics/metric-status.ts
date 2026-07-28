@@ -4,6 +4,7 @@ export const metricStatusLabels: Record<MetricStatus, string> = {
 	normal: '正常',
 	warning: '警告',
 	critical: '危险',
+	sleeping: '休眠',
 	waiting: '等待采样',
 	unavailable: '不可用',
 };

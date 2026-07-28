@@ -15,8 +15,8 @@ export function formatBinaryBytes(bytes: number): string {
 	return `${value.toFixed(precision)} ${BINARY_UNITS[unitIndex]}`;
 }
 
-export function formatGibibytes(bytes: number): string {
-	return `${(Math.max(0, bytes) / 1024 ** 3).toFixed(1)} GiB`;
+export function formatGigabytes(bytes: number): string {
+	return `${(Math.max(0, bytes) / 1_000_000_000).toFixed(1)} GB`;
 }
 
 export function formatByteRate(bytesPerSecond: number): string {
@@ -33,4 +33,8 @@ export function formatRpm(rpm: number): string {
 
 export function formatFrequencyHertz(hertz: number): string {
 	return `${(hertz / 1_000_000_000).toFixed(2)} GHz`;
+}
+
+export function formatWatts(watts: number): string {
+	return `${watts.toFixed(1)} W`;
 }

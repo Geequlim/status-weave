@@ -4,6 +4,7 @@ import {
 	createCpuUsagePageModel,
 } from '../../src/details/pages/cpu-usage/model';
 import { createFanPageModel } from '../../src/details/pages/fan/model';
+import { createGpuPageModel, shortGpuName } from '../../src/details/pages/gpu/model';
 import { createMemoryUsagePageModel } from '../../src/details/pages/memory-usage/model';
 import {
 	calculateTemperatureColumnCount,
@@ -76,16 +77,16 @@ describe('detail page models', () => {
 			status: '正常',
 			rows: [
 				{ id: 'usagePercent', value: '25.0%' },
-				{ id: 'usedBytes', value: '2.0 GiB' },
-				{ id: 'availableBytes', value: '6.0 GiB' },
-				{ id: 'totalBytes', value: '8.0 GiB' },
-				{ id: 'freeBytes', value: '1.0 GiB' },
-				{ id: 'cachedBytes', value: '2.0 GiB' },
-				{ id: 'buffersBytes', value: '0.2 GiB' },
-				{ id: 'reclaimableBytes', value: '0.5 GiB' },
-				{ id: 'sharedBytes', value: '0.1 GiB' },
-				{ id: 'swapUsedBytes', value: '1.0 GiB' },
-				{ id: 'swapTotalBytes', value: '4.0 GiB' },
+				{ id: 'usedBytes', value: '2.1 GB' },
+				{ id: 'availableBytes', value: '6.4 GB' },
+				{ id: 'totalBytes', value: '8.6 GB' },
+				{ id: 'freeBytes', value: '1.1 GB' },
+				{ id: 'cachedBytes', value: '2.1 GB' },
+				{ id: 'buffersBytes', value: '0.2 GB' },
+				{ id: 'reclaimableBytes', value: '0.5 GB' },
+				{ id: 'sharedBytes', value: '0.1 GB' },
+				{ id: 'swapUsedBytes', value: '1.1 GB' },
+				{ id: 'swapTotalBytes', value: '4.3 GB' },
 			],
 		});
 	});
@@ -158,5 +159,51 @@ describe('detail page models', () => {
 				{ id: 'gpu', label: 'gpu_fan', value: '2500 RPM' },
 			],
 		});
+	});
+
+	it('formats a partially supported NVIDIA laptop GPU without inventing limits', () => {
+		const sample: MetricSample<'gpu.device'> = {
+			metricId: 'gpu.device',
+			sourceId: 'nvidia:0',
+			sampledAt: 1000,
+			status: 'normal',
+			value: {
+				deviceId: 'GPU-example',
+				driverVersion: '610.43.03',
+				graphicsClockHertz: 1_027_000_000,
+				index: 0,
+				memoryClockHertz: 9_001_000_000,
+				memoryTotalBytes: 12_227 * 1024 ** 2,
+				memoryUsedBytes: 1_352 * 1024 ** 2,
+				name: 'NVIDIA GeForce RTX 5070 Ti Laptop GPU',
+				operationalState: 'active',
+				pciBusId: '0000:01:00.0',
+				performanceState: 'P4',
+				powerLimitWatts: null,
+				powerWatts: 22.75,
+				temperatureCelsius: 42,
+				utilizationPercent: 9,
+				vendor: 'nvidia',
+			},
+		};
+		expect(shortGpuName(sample.value!.name)).toBe('RTX 5070 Ti');
+		const model = createGpuPageModel(sample);
+		expect(model).toMatchObject({
+			badge: '运行中 · P4',
+			status: 'normal',
+			title: 'RTX 5070 Ti',
+		});
+		expect(model.rows).toEqual(
+			expect.arrayContaining(
+				[
+					{ id: 'state', value: '运行中' },
+					{ id: 'utilization', value: '9%' },
+					{ id: 'temperature', value: '42.0 °C' },
+					{ id: 'memory', value: '1.4 / 12.8 GB' },
+					{ id: 'memoryPercent', value: '11.1%' },
+					{ id: 'power', value: '22.8 W' },
+				].map((row) => expect.objectContaining(row)),
+			),
+		);
 	});
 });

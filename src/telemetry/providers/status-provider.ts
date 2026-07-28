@@ -1,25 +1,29 @@
 import type { MetricId, TelemetrySnapshot } from '../metrics/metric-sample';
 import { DemoStatusProvider } from './demo-status-provider';
 import { HwmonProvider } from './hwmon-provider';
+import { NvidiaProvider } from './nvidia-provider';
 import { SystemProvider, type SnapshotProvider } from './system-provider';
 
 export class StatusProvider implements SnapshotProvider {
 	private readonly demo = new DemoStatusProvider();
 	private readonly hwmon = new HwmonProvider();
+	private readonly nvidia = new NvidiaProvider();
 	private readonly system = new SystemProvider();
 
 	reset(): void {
 		this.demo.reset();
 		this.hwmon.reset();
+		this.nvidia.reset();
 		this.system.reset();
 	}
 
 	async sample(metricIds: ReadonlySet<MetricId>): Promise<TelemetrySnapshot> {
-		const [snapshot, hwmon] = await Promise.all([
+		const [snapshot, hwmon, nvidia] = await Promise.all([
 			this.system.sample(metricIds),
 			this.hwmon.sample(metricIds),
+			this.nvidia.sample(metricIds),
 		]);
-		const samples = [...snapshot.samples, ...hwmon.samples];
+		const samples = [...snapshot.samples, ...hwmon.samples, ...nvidia.samples];
 		if (!metricIds.has('demo.status')) return { ...snapshot, samples };
 		return {
 			...snapshot,

@@ -27,7 +27,7 @@ export interface DetailPageContext {
 }
 
 export interface DetailPageDefinition<K extends MetricId = MetricId> {
-	readonly iconName: 'cpu' | 'memory' | 'temperature' | 'fan' | null;
+	readonly iconName: 'cpu' | 'memory' | 'temperature' | 'fan' | 'gpu' | null;
 	readonly metricId: K;
 	readonly title: string;
 	create(ref: MetricRef<K>, context: DetailPageContext): DetailPage;

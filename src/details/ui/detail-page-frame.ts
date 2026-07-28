@@ -15,13 +15,14 @@ export interface DetailPageFrame {
 	addSection(title: string): void;
 	createRow(title: string): DetailValueRow;
 	setBadge(text: string | null, status?: MetricStatus): void;
+	setTitle(text: string): void;
 	setVisible(visible: boolean): void;
 }
 
 export function createDetailPageFrame(
 	context: DetailPageContext,
 	title: string,
-	iconName: 'cpu' | 'memory' | 'temperature' | 'fan' | null,
+	iconName: 'cpu' | 'memory' | 'temperature' | 'fan' | 'gpu' | null,
 ): DetailPageFrame {
 	const { Gio, PopupBaseMenuItem, St, maxContentHeight, metadataPath } = context;
 	const item = new PopupBaseMenuItem({ activate: false, hover: false, reactive: true });
@@ -47,12 +48,11 @@ export function createDetailPageFrame(
 			}),
 		);
 	}
-	header.add_child(
-		new St.Label({
-			text: title,
-			style_class: 'status-weave-detail-header',
-		}),
-	);
+	const titleLabel = new St.Label({
+		text: title,
+		style_class: 'status-weave-detail-header',
+	});
+	header.add_child(titleLabel);
 	const status = new St.Label({
 		style_class: 'status-weave-detail-status',
 		text: '等待采样',
@@ -100,7 +100,14 @@ export function createDetailPageFrame(
 		createRow,
 		setBadge: (text: string | null, metricStatus = 'normal') => {
 			if (text) {
-				for (const name of ['normal', 'warning', 'critical', 'waiting', 'unavailable']) {
+				for (const name of [
+					'normal',
+					'warning',
+					'critical',
+					'sleeping',
+					'waiting',
+					'unavailable',
+				]) {
 					status.remove_style_class_name(`status-weave-status-${name}`);
 				}
 				status.add_style_class_name(`status-weave-status-${metricStatus}`);
@@ -111,6 +118,7 @@ export function createDetailPageFrame(
 				status.hide();
 			}
 		},
+		setTitle: (text: string) => titleLabel.set_text(text),
 		setVisible: (visible: boolean) => (visible ? item.actor.show() : item.actor.hide()),
 	};
 }

@@ -49,7 +49,7 @@ const snapshot: TelemetrySnapshot = {
 describe('system label layout', () => {
 	it('omits hidden metrics and trims an exposed separator', () => {
 		const layout = setSlotVisible(normalizeLayout(undefined), 'cpu.usage', false);
-		expect(formatSystemLabel(snapshot, layout)).toBe('RAM 5.0 / 8.0 GiB');
+		expect(formatSystemLabel(snapshot, layout)).toBe('RAM 5.4 / 8.6 GB');
 	});
 
 	it('renders migrated metrics in their persisted order', () => {
@@ -58,7 +58,7 @@ describe('system label layout', () => {
 			{ id: 'separator.system', visible: true },
 			{ id: 'cpu.usage', visible: true },
 		]);
-		expect(formatSystemLabel(snapshot, layout)).toBe('RAM 5.0 / 8.0 GiB  ·  CPU 12%');
+		expect(formatSystemLabel(snapshot, layout)).toBe('RAM 5.4 / 8.6 GB  ·  CPU 12%');
 	});
 
 	it('renders independent formats for duplicate metrics', () => {
@@ -73,9 +73,9 @@ describe('system label layout', () => {
 	it('supports all memory presentation presets', () => {
 		const expected = {
 			percent: 'RAM 63%',
-			used: 'RAM 5.0 GiB',
-			'used-total': 'RAM 5.0 / 8.0 GiB',
-			available: 'RAM 可用 3.0 GiB',
+			used: 'RAM 5.4 GB',
+			'used-total': 'RAM 5.4 / 8.6 GB',
+			available: 'RAM 可用 3.2 GB',
 		};
 		for (const [format, label] of Object.entries(expected)) {
 			const layout = setSlotFormat(addMetricSlot([], 'memory.usage'), 'memory.usage', format);
@@ -86,9 +86,9 @@ describe('system label layout', () => {
 	it('can hide the memory title independently from every value format', () => {
 		const expected = {
 			percent: '63%',
-			used: '5.0 GiB',
-			'used-total': '5.0 / 8.0 GiB',
-			available: '可用 3.0 GiB',
+			used: '5.4 GB',
+			'used-total': '5.4 / 8.6 GB',
+			available: '可用 3.2 GB',
 		};
 		for (const [format, label] of Object.entries(expected)) {
 			let layout = setSlotFormat(addMetricSlot([], 'memory.usage'), 'memory.usage', format);
@@ -156,6 +156,51 @@ describe('system label layout', () => {
 		for (const [format, value] of Object.entries(expected)) {
 			const layout = setSlotFormat(addMetricSlot([], 'demo.status'), 'demo.status', format);
 			expect(formatSystemLabel(demo, layout)).toBe(value);
+		}
+	});
+
+	it('formats all NVIDIA panel values from one device snapshot', () => {
+		const gpu: TelemetrySnapshot = {
+			sampledAt: 4,
+			samples: [
+				{
+					metricId: 'gpu.device',
+					sourceId: 'nvidia:0',
+					sampledAt: 4,
+					status: 'normal',
+					value: {
+						deviceId: 'GPU-example',
+						driverVersion: '610.43.03',
+						graphicsClockHertz: 1_027_000_000,
+						index: 0,
+						memoryClockHertz: 9_001_000_000,
+						memoryTotalBytes: 12_227 * 1024 ** 2,
+						memoryUsedBytes: 1_352 * 1024 ** 2,
+						name: 'NVIDIA GeForce RTX 5070 Ti Laptop GPU',
+						operationalState: 'active',
+						pciBusId: '0000:01:00.0',
+						performanceState: 'P4',
+						powerLimitWatts: null,
+						powerWatts: 22.75,
+						temperatureCelsius: 42,
+						utilizationPercent: 9,
+						vendor: 'nvidia',
+					},
+				},
+			],
+		};
+		const expected = {
+			'gpu-utilization': 'GPU 9%',
+			'gpu-temperature': 'GPU 42.0 °C',
+			'gpu-memory-used': 'GPU 1.4 GB',
+			'gpu-memory-used-total': 'GPU 1.4 / 12.8 GB',
+			'gpu-memory-percent': 'GPU 11%',
+			'gpu-power': 'GPU 22.8 W',
+			'gpu-clock': 'GPU 1.03 GHz',
+		};
+		for (const [format, label] of Object.entries(expected)) {
+			const layout = setSlotFormat(addMetricSlot([], 'gpu.device'), 'gpu.device', format);
+			expect(formatSystemLabel(gpu, layout)).toBe(label);
 		}
 	});
 });

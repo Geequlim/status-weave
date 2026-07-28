@@ -108,6 +108,15 @@ describe('instance layout', () => {
 		});
 	});
 
+	it('adds the primary NVIDIA GPU with a utilization display', () => {
+		expect(addMetricSlot([], 'gpu.device')[0]).toMatchObject({
+			metric: 'gpu.device',
+			sourceId: 'nvidia:0',
+			iconStyle: 'regular',
+			format: 'gpu-utilization',
+		});
+	});
+
 	it('keeps a hidden slot in place so showing it restores its position', () => {
 		const hidden = setSlotVisible(defaultLayout, 'separator.system', false);
 		expect(setSlotVisible(hidden, 'separator.system', true)).toEqual(defaultLayout);

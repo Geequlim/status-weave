@@ -3,6 +3,7 @@ import type { DetailPageDefinition } from './detail-page';
 import { createCpuUsagePage } from './pages/cpu-usage/page';
 import { createDemoStatusPage } from './pages/demo-status/page';
 import { createFanPage } from './pages/fan/page';
+import { createGpuPage } from './pages/gpu/page';
 import { createMemoryUsagePage } from './pages/memory-usage/page';
 import { createTemperaturePage } from './pages/temperature/page';
 
@@ -37,6 +38,13 @@ export const detailPageRegistry: Record<MetricId, DetailPageDefinition> = {
 		iconName: 'fan',
 		metricId: 'fan.hwmon',
 		title: '风扇',
+	},
+	'gpu.device': {
+		create: (ref, context) =>
+			createGpuPage(ref as { metricId: 'gpu.device'; sourceId: string }, context),
+		iconName: 'gpu',
+		metricId: 'gpu.device',
+		title: 'GPU',
 	},
 	'demo.status': {
 		create: (ref, context) =>

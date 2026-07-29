@@ -84,6 +84,7 @@ export interface HwmonFanValue {
 export interface GpuDeviceValue {
 	readonly deviceId: string;
 	readonly driverVersion: string;
+	readonly fanSpeedPercent: number | null;
 	readonly graphicsClockHertz: number | null;
 	readonly index: number;
 	readonly memoryClockHertz: number | null;

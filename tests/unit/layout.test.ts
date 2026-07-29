@@ -7,10 +7,11 @@ import {
 	defaultLayout,
 	duplicateSlot,
 	moveSlot,
+	normalizeIconStyle,
 	normalizeLayout,
 	removeSlot,
 	setSlotFormat,
-	setSlotIconStyle,
+	setSlotShowIcon,
 	setSlotShowLabel,
 	setSlotSourceId,
 	setSlotVisible,
@@ -31,7 +32,7 @@ describe('instance layout', () => {
 				metric: 'memory.usage',
 				sourceId: 'system',
 				format: 'used-total',
-				iconStyle: 'regular',
+				showIcon: true,
 				showLabel: true,
 				visible: true,
 			},
@@ -41,7 +42,7 @@ describe('instance layout', () => {
 				metric: 'cpu.usage',
 				sourceId: 'system',
 				format: 'percent',
-				iconStyle: 'regular',
+				showIcon: true,
 				showLabel: true,
 				visible: false,
 			},
@@ -74,14 +75,14 @@ describe('instance layout', () => {
 		let layout = addMetricSlot(defaultLayout, 'memory.usage');
 		expect(layout[3]?.id).toBe('memory.usage#2');
 		layout = setSlotFormat(layout, 'memory.usage#2', 'percent');
-		layout = setSlotIconStyle(layout, 'memory.usage#2', 'fill');
+		layout = setSlotShowIcon(layout, 'memory.usage#2', false);
 		layout = setSlotShowLabel(layout, 'memory.usage#2', false);
 		layout = duplicateSlot(layout, 'memory.usage#2');
 		expect(layout[4]).toMatchObject({
 			id: 'memory.usage#2#2',
 			metric: 'memory.usage',
 			format: 'percent',
-			iconStyle: 'fill',
+			showIcon: false,
 			showLabel: false,
 		});
 		layout = addSeparatorSlot(layout);
@@ -101,10 +102,31 @@ describe('instance layout', () => {
 		expect(layout[0]).toMatchObject({ format: 'available', showLabel: true });
 	});
 
+	it('migrates per-slot icon styles to a display switch', () => {
+		expect(
+			normalizeLayout([
+				{
+					id: 'cpu',
+					kind: 'metric',
+					metric: 'cpu.usage',
+					iconStyle: 'none',
+				},
+				{
+					id: 'memory',
+					kind: 'metric',
+					metric: 'memory.usage',
+					iconStyle: 'fill',
+				},
+			]),
+		).toMatchObject([{ showIcon: false }, { showIcon: true }]);
+		expect(normalizeIconStyle('fill')).toBe('fill');
+		expect(normalizeIconStyle('none')).toBe('regular');
+	});
+
 	it('adds the development status metric without an unrelated icon', () => {
 		expect(addMetricSlot([], 'demo.status')[0]).toMatchObject({
 			metric: 'demo.status',
-			iconStyle: 'none',
+			showIcon: false,
 			format: 'percent',
 		});
 	});
@@ -113,7 +135,7 @@ describe('instance layout', () => {
 		expect(addMetricSlot([], 'gpu.device')[0]).toMatchObject({
 			metric: 'gpu.device',
 			sourceId: 'nvidia:0',
-			iconStyle: 'regular',
+			showIcon: true,
 			format: 'gpu-utilization',
 		});
 	});
@@ -122,7 +144,7 @@ describe('instance layout', () => {
 		let layout = addMetricSlot([], 'network.traffic');
 		expect(layout[0]).toMatchObject({
 			format: 'network-both',
-			iconStyle: 'regular',
+			showIcon: true,
 			metric: 'network.traffic',
 			sourceId: 'network:auto',
 		});

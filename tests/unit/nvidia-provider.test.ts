@@ -14,7 +14,7 @@ import {
 } from '../../src/telemetry/providers/nvidia-provider';
 
 const nvidiaOutput =
-	'0, GPU-example, 00000000:01:00.0, NVIDIA GeForce RTX 5070 Ti Laptop GPU, 610.43.03, 9, 1352, 12227, 42, 22.75, [N/A], 1027, 9001, P4\n';
+	'0, GPU-example, 00000000:01:00.0, NVIDIA GeForce RTX 5070 Ti Laptop GPU, 610.43.03, 9, 1352, 12227, 42, 22.75, [N/A], 1027, 9001, P4, 35\n';
 
 describe('NvidiaProvider', () => {
 	beforeEach(() => {
@@ -38,6 +38,7 @@ describe('NvidiaProvider', () => {
 				status: 'normal',
 				value: expect.objectContaining({
 					deviceId: 'GPU-example',
+					fanSpeedPercent: 35,
 					graphicsClockHertz: 1_027_000_000,
 					memoryTotalBytes: 12_227 * 1024 ** 2,
 					memoryUsedBytes: 1_352 * 1024 ** 2,
@@ -63,6 +64,7 @@ describe('NvidiaProvider', () => {
 			sourceId: 'nvidia:0',
 			status: 'sleeping',
 			value: {
+				fanSpeedPercent: null,
 				operationalState: 'sleeping',
 				temperatureCelsius: null,
 				utilizationPercent: null,

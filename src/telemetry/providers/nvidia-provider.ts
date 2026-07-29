@@ -23,6 +23,7 @@ const NVIDIA_QUERY_FIELDS = [
 	'clocks.current.graphics',
 	'clocks.current.memory',
 	'pstate',
+	'fan.speed',
 ] as const;
 
 const mebibytesToBytes = (value: number | null): number | null =>
@@ -78,6 +79,7 @@ export function parseNvidiaCsv(output: string): GpuDeviceValue[] {
 		devices.push({
 			deviceId: fields[1]!,
 			driverVersion: fields[4]!,
+			fanSpeedPercent: parseOptionalNumber(fields[14]!),
 			graphicsClockHertz: megahertzToHertz(parseOptionalNumber(fields[11]!)),
 			index,
 			memoryClockHertz: megahertzToHertz(parseOptionalNumber(fields[12]!)),
@@ -170,6 +172,7 @@ export class NvidiaProvider implements SnapshotProvider {
 				if (runtimeStatus !== 'suspended') continue;
 				const value: GpuDeviceValue = {
 					...device,
+					fanSpeedPercent: null,
 					graphicsClockHertz: null,
 					memoryClockHertz: null,
 					memoryUsedBytes: null,

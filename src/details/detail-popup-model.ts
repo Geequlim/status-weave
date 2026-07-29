@@ -1,20 +1,11 @@
 import type { LayoutSlot } from '../presentation/layout';
-import { metricKey, type MetricRef, type MetricStatus } from '../telemetry/metrics/metric-sample';
+import { metricKey, type MetricRef } from '../telemetry/metrics/metric-sample';
 
 const MINIMUM_CONTENT_HEIGHT = 320;
 const SINGLE_PAGE_CHROME_HEIGHT = 96;
 const TABBED_PAGE_CHROME_HEIGHT = 152;
 
 export type DetailTabsPlacement = 'before-pages' | 'after-pages';
-
-export function detailBadgeMinimumWidthEm(text: string, status: MetricStatus): number {
-	if (status !== 'normal') return 4.25;
-	const textWidth = Array.from(text).reduce(
-		(width, character) => width + (/[\u3000-\u9fff]/.test(character) ? 1 : 0.5),
-		0,
-	);
-	return Math.min(14, Math.max(4.25, textWidth));
-}
 
 export function detailTabsPlacement(
 	orientation: number,

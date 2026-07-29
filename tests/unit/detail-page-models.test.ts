@@ -171,6 +171,7 @@ describe('detail page models', () => {
 			value: {
 				deviceId: 'GPU-example',
 				driverVersion: '610.43.03',
+				fanSpeedPercent: 35,
 				graphicsClockHertz: 1_027_000_000,
 				index: 0,
 				memoryClockHertz: 9_001_000_000,
@@ -200,6 +201,7 @@ describe('detail page models', () => {
 					{ id: 'state', value: '运行中' },
 					{ id: 'utilization', value: '9%' },
 					{ id: 'temperature', value: '42.0 °C' },
+					{ id: 'fanSpeed', value: '35%' },
 					{ id: 'memory', value: '1.4 / 12.8 GB' },
 					{ id: 'memoryPercent', value: '11.1%' },
 					{ id: 'power', value: '22.8 W' },

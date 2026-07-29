@@ -1,7 +1,7 @@
 import type { MetricId } from '../telemetry/metrics/metric-sample';
 
 export type { MetricId } from '../telemetry/metrics/metric-sample';
-export type IconStyle = 'none' | 'regular' | 'bold' | 'fill';
+export type IconStyle = 'regular' | 'bold' | 'fill';
 export type MetricFormatId =
 	| 'percent'
 	| 'percent-precise'
@@ -25,6 +25,7 @@ export type MetricFormatId =
 	| 'gpu-memory-percent'
 	| 'gpu-power'
 	| 'gpu-clock'
+	| 'gpu-fan-speed'
 	| 'network-both'
 	| 'network-download'
 	| 'network-upload'
@@ -38,7 +39,7 @@ export interface MetricSlot {
 	readonly metric: MetricId;
 	readonly sourceId: string;
 	readonly format: MetricFormatId;
-	readonly iconStyle: IconStyle;
+	readonly showIcon: boolean;
 	readonly showLabel: boolean;
 	readonly visible: boolean;
 }
@@ -56,22 +57,10 @@ export interface FormatOption {
 	readonly label: string;
 }
 
-export interface IconStyleOption {
-	readonly id: IconStyle;
-	readonly label: string;
-}
-
 export interface MetricPresetOption {
 	readonly id: MetricPresetId;
 	readonly label: string;
 }
-
-export const iconStyleOptions: readonly IconStyleOption[] = [
-	{ id: 'none', label: '无图标' },
-	{ id: 'regular', label: '线性' },
-	{ id: 'bold', label: '粗线' },
-	{ id: 'fill', label: '填充' },
-];
 
 export const metricLabels: Record<MetricId, string> = {
 	'cpu.usage': 'CPU 使用率',
@@ -95,9 +84,9 @@ export const metricFormatOptions: Record<MetricId, readonly FormatOption[]> = {
 		{ id: 'available', label: '可用量 · 可用 23.7 GB' },
 	],
 	'temperature.hwmon': [
-		{ id: 'temperature-primary', label: '主要温度 · 56.0 °C' },
-		{ id: 'temperature-peak', label: '最高温度 · 56.0 °C' },
-		{ id: 'temperature-average', label: '平均温度 · 47.2 °C' },
+		{ id: 'temperature-primary', label: '主要温度 · 56 °C' },
+		{ id: 'temperature-peak', label: '最高温度 · 56 °C' },
+		{ id: 'temperature-average', label: '平均温度 · 47 °C' },
 	],
 	'fan.hwmon': [
 		{ id: 'fan-primary', label: '主要风扇 · 1800 RPM' },
@@ -106,12 +95,13 @@ export const metricFormatOptions: Record<MetricId, readonly FormatOption[]> = {
 	],
 	'gpu.device': [
 		{ id: 'gpu-utilization', label: '利用率 · 18%' },
-		{ id: 'gpu-temperature', label: '温度 · 56.0 °C' },
+		{ id: 'gpu-temperature', label: '温度 · 56 °C' },
 		{ id: 'gpu-memory-used', label: '显存已用量 · 1.3 GB' },
 		{ id: 'gpu-memory-used-total', label: '显存已用 / 总量 · 1.3 / 12.0 GB' },
 		{ id: 'gpu-memory-percent', label: '显存占用 · 11%' },
 		{ id: 'gpu-power', label: '功耗 · 22.8 W' },
 		{ id: 'gpu-clock', label: '核心频率 · 1.03 GHz' },
+		{ id: 'gpu-fan-speed', label: '风扇转速 · 35%' },
 	],
 	'network.traffic': [
 		{ id: 'network-both', label: '下载和上传 · ↓ 12.3 M  ↑ 1.20 M' },
@@ -122,7 +112,7 @@ export const metricFormatOptions: Record<MetricId, readonly FormatOption[]> = {
 	'demo.status': [
 		{ id: 'percent', label: '整数百分比 · 42%' },
 		{ id: 'percent-precise', label: '精确百分比 · 42.0%' },
-		{ id: 'temperature', label: '温度 · 68.4 °C' },
+		{ id: 'temperature', label: '温度 · 68 °C' },
 		{ id: 'bytes', label: '字节量 · 7.4 GiB' },
 		{ id: 'rate', label: '速率 · 125.6 MiB/s' },
 		{ id: 'rpm', label: '转速 · 1420 RPM' },
@@ -145,14 +135,14 @@ const defaultFormats: Record<MetricId, MetricFormatId> = {
 	'demo.status': 'percent',
 };
 
-const defaultIconStyles: Record<MetricId, IconStyle> = {
-	'cpu.usage': 'regular',
-	'memory.usage': 'regular',
-	'temperature.hwmon': 'regular',
-	'fan.hwmon': 'regular',
-	'gpu.device': 'regular',
-	'network.traffic': 'regular',
-	'demo.status': 'none',
+const defaultShowIcons: Record<MetricId, boolean> = {
+	'cpu.usage': true,
+	'memory.usage': true,
+	'temperature.hwmon': true,
+	'fan.hwmon': true,
+	'gpu.device': true,
+	'network.traffic': true,
+	'demo.status': false,
 };
 
 const defaultSourceIds: Record<MetricId, string> = {
@@ -185,7 +175,7 @@ export const defaultLayout: readonly LayoutSlot[] = [
 		metric: 'cpu.usage',
 		sourceId: 'system',
 		format: defaultFormats['cpu.usage'],
-		iconStyle: 'regular',
+		showIcon: true,
 		showLabel: true,
 		visible: true,
 	},
@@ -196,7 +186,7 @@ export const defaultLayout: readonly LayoutSlot[] = [
 		metric: 'memory.usage',
 		sourceId: 'system',
 		format: defaultFormats['memory.usage'],
-		iconStyle: 'regular',
+		showIcon: true,
 		showLabel: true,
 		visible: true,
 	},
@@ -225,8 +215,14 @@ function normalizeMetricFormat(metric: MetricId, value: unknown): MetricFormatId
 const normalizeShowLabel = (candidate: Record<string, unknown>): boolean =>
 	typeof candidate.showLabel === 'boolean' ? candidate.showLabel : candidate.format !== 'percent';
 
-const isIconStyle = (value: unknown): value is IconStyle =>
-	iconStyleOptions.some((option) => option.id === value);
+export const normalizeIconStyle = (value: unknown): IconStyle =>
+	value === 'bold' || value === 'fill' ? value : 'regular';
+
+const normalizeShowIcon = (metric: MetricId, candidate: Record<string, unknown>): boolean => {
+	if (typeof candidate.showIcon === 'boolean') return candidate.showIcon;
+	if (candidate.iconStyle === 'none') return false;
+	return defaultShowIcons[metric];
+};
 
 const cloneSlot = (slot: LayoutSlot): LayoutSlot => ({ ...slot });
 
@@ -242,7 +238,7 @@ function migrateLegacySlot(candidate: Record<string, unknown>): LayoutSlot | nul
 			metric: candidate.id,
 			sourceId: defaultSourceIds[candidate.id],
 			format: defaultFormats[candidate.id],
-			iconStyle: defaultIconStyles[candidate.id],
+			showIcon: defaultShowIcons[candidate.id],
 			showLabel: true,
 			visible,
 		};
@@ -274,9 +270,7 @@ export function normalizeLayout(value: unknown): LayoutSlot[] {
 						? record.sourceId
 						: defaultSourceIds[record.metric],
 				format: normalizeMetricFormat(record.metric, record.format),
-				iconStyle: isIconStyle(record.iconStyle)
-					? record.iconStyle
-					: defaultIconStyles[record.metric],
+				showIcon: normalizeShowIcon(record.metric, record),
 				showLabel: normalizeShowLabel(record),
 				visible: record.visible !== false,
 			};
@@ -307,7 +301,7 @@ export function addMetricSlot(layout: readonly LayoutSlot[], metric: MetricId): 
 			metric,
 			sourceId: defaultSourceIds[metric],
 			format: defaultFormats[metric],
-			iconStyle: defaultIconStyles[metric],
+			showIcon: defaultShowIcons[metric],
 			showLabel: true,
 			visible: true,
 		},
@@ -358,14 +352,13 @@ export function setSlotFormat(
 	);
 }
 
-export function setSlotIconStyle(
+export function setSlotShowIcon(
 	layout: readonly LayoutSlot[],
 	id: string,
-	iconStyle: IconStyle,
+	showIcon: boolean,
 ): LayoutSlot[] {
-	if (!isIconStyle(iconStyle)) return layout.map(cloneSlot);
 	return layout.map((slot) =>
-		slot.id === id && slot.kind === 'metric' ? { ...slot, iconStyle } : cloneSlot(slot),
+		slot.id === id && slot.kind === 'metric' ? { ...slot, showIcon } : cloneSlot(slot),
 	);
 }
 

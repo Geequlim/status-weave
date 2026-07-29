@@ -1,6 +1,5 @@
 import type { DetailPageContext } from '../detail-page';
 import type { MetricStatus } from '../../telemetry/metrics/metric-sample';
-import { detailBadgeMinimumWidthEm } from '../detail-popup-model';
 
 export interface DetailValueRow {
 	readonly actor: Cinnamon.StBoxLayout;
@@ -24,7 +23,7 @@ export function createDetailPageFrame(
 	title: string,
 	iconName: 'cpu' | 'memory' | 'temperature' | 'fan' | 'gpu' | 'network' | null,
 ): DetailPageFrame {
-	const { Gio, PopupBaseMenuItem, St, maxContentHeight, metadataPath } = context;
+	const { Gio, PopupBaseMenuItem, St, iconStyle, maxContentHeight, metadataPath } = context;
 	const item = new PopupBaseMenuItem({ activate: false, hover: false, reactive: true });
 	const scroll = new St.ScrollView({ style_class: 'status-weave-detail-scroll' });
 	scroll.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC);
@@ -36,10 +35,14 @@ export function createDetailPageFrame(
 	scroll.add_actor(content);
 	item.addActor(scroll, { expand: true, span: -1 });
 
-	const header = new St.BoxLayout({ style_class: 'status-weave-detail-header-row' });
+	const header = new St.BoxLayout({
+		style_class: 'status-weave-detail-header-block',
+		vertical: true,
+	});
+	const titleRow = new St.BoxLayout({ style_class: 'status-weave-detail-header-row' });
 	if (iconName) {
-		const iconPath = `${metadataPath}/icons/phosphor/regular/${iconName}-symbolic.svg`;
-		header.add_child(
+		const iconPath = `${metadataPath}/icons/phosphor/${iconStyle}/${iconName}-symbolic.svg`;
+		titleRow.add_child(
 			new St.Icon({
 				gicon: new Gio.FileIcon({ file: Gio.file_new_for_path(iconPath) }),
 				icon_size: 16,
@@ -51,13 +54,24 @@ export function createDetailPageFrame(
 	const titleLabel = new St.Label({
 		text: title,
 		style_class: 'status-weave-detail-header',
+		x_expand: true,
 	});
-	header.add_child(titleLabel);
+	titleRow.add_child(titleLabel);
+	header.add_child(titleRow);
 	const status = new St.Label({
 		style_class: 'status-weave-detail-status',
 		text: '等待采样',
 		x_align: St.Align.END,
 	});
+	const statusText = status.get_clutter_text();
+	statusText.set_ellipsize(imports.gi.Pango.EllipsizeMode.NONE);
+	const fitStatusToText = () => {
+		const layout = statusText.get_layout();
+		layout.set_width(-1);
+		const [textWidth] = layout.get_pixel_size();
+		const horizontalPadding = status.get_theme_node().get_horizontal_padding();
+		status.set_width(Math.ceil((textWidth ?? 0) + horizontalPadding));
+	};
 	const statusContainer = new St.Bin({
 		x_align: St.Align.END,
 		x_expand: true,
@@ -111,8 +125,8 @@ export function createDetailPageFrame(
 					status.remove_style_class_name(`status-weave-status-${name}`);
 				}
 				status.add_style_class_name(`status-weave-status-${metricStatus}`);
-				status.set_style(`min-width: ${detailBadgeMinimumWidthEm(text, metricStatus)}em;`);
 				status.set_text(text);
+				fitStatusToText();
 				status.show();
 			} else {
 				status.hide();

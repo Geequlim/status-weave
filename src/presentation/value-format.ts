@@ -5,6 +5,10 @@ export function formatPercentage(value: number, precision = 0): string {
 	return `${value.toFixed(precision)}%`;
 }
 
+export function formatCompactPercentage(value: number): string {
+	return formatPercentage(value, Math.abs(Math.round(value)) < 10 ? 1 : 0);
+}
+
 export function formatBinaryBytes(bytes: number): string {
 	let value = Math.max(0, bytes);
 	let unitIndex = 0;
@@ -57,6 +61,10 @@ export function formatByteRate(bytesPerSecond: number): string {
 
 export function formatTemperature(celsius: number): string {
 	return `${celsius.toFixed(1)} °C`;
+}
+
+export function formatCompactTemperature(celsius: number): string {
+	return `${celsius.toFixed(Math.abs(Math.round(celsius)) < 10 ? 1 : 0)} °C`;
 }
 
 export function formatRpm(rpm: number): string {

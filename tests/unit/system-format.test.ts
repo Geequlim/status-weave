@@ -7,6 +7,7 @@ import {
 	setSlotVisible,
 } from '../../src/presentation/layout';
 import {
+	formatNetworkDirections,
 	formatSystemLabel,
 	formatSystemSlotPresentation,
 	formatSystemTooltip,
@@ -148,7 +149,7 @@ describe('system label layout', () => {
 			],
 		};
 		const expected = {
-			temperature: '演示 68.4 °C',
+			temperature: '演示 68 °C',
 			bytes: '演示 7.4 GiB',
 			rate: '演示 125.6 MiB/s',
 			rpm: '演示 1420 RPM',
@@ -171,6 +172,7 @@ describe('system label layout', () => {
 					value: {
 						deviceId: 'GPU-example',
 						driverVersion: '610.43.03',
+						fanSpeedPercent: 35,
 						graphicsClockHertz: 1_027_000_000,
 						index: 0,
 						memoryClockHertz: 9_001_000_000,
@@ -190,18 +192,25 @@ describe('system label layout', () => {
 			],
 		};
 		const expected = {
-			'gpu-utilization': 'GPU 9%',
-			'gpu-temperature': 'GPU 42.0 °C',
+			'gpu-utilization': 'GPU 9.0%',
+			'gpu-temperature': 'GPU 42 °C',
 			'gpu-memory-used': 'GPU 1.4 GB',
 			'gpu-memory-used-total': 'GPU 1.4 / 12.8 GB',
 			'gpu-memory-percent': 'GPU 11%',
 			'gpu-power': 'GPU 22.8 W',
 			'gpu-clock': 'GPU 1.03 GHz',
+			'gpu-fan-speed': 'GPU 35%',
 		};
 		for (const [format, label] of Object.entries(expected)) {
 			const layout = setSlotFormat(addMetricSlot([], 'gpu.device'), 'gpu.device', format);
 			expect(formatSystemLabel(gpu, layout)).toBe(label);
 		}
+		const temperatureLayout = setSlotFormat(
+			addMetricSlot([], 'gpu.device'),
+			'gpu.device',
+			'gpu-temperature',
+		);
+		expect(formatSystemTooltip(gpu, 4, temperatureLayout)).toContain('42.0 °C · 正常');
 	});
 
 	it('keeps network panel units compact while tooltips use rates', () => {
@@ -233,5 +242,11 @@ describe('system label layout', () => {
 		);
 		expect(formatSystemLabel(network, layout)).toBe('↓ 12.4 M  ↑ 1.20 M');
 		expect(formatSystemTooltip(network, 3, layout)).toContain('↓ 12.4 MB/s  ↑ 1.2 MB/s · 正常');
+		const networkSlot = layout[0]!;
+		if (networkSlot.kind !== 'metric') throw new Error('Expected a network metric slot');
+		expect(formatNetworkDirections(network, networkSlot)).toEqual([
+			{ direction: 'download', value: '12.4 M' },
+			{ direction: 'upload', value: '1.20 M' },
+		]);
 	});
 });

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
 	calculateDetailContentHeight,
-	detailBadgeMinimumWidthEm,
 	detailRefsFromLayout,
 	detailTabsPlacement,
 } from '../../src/details/detail-popup-model';
@@ -18,14 +17,6 @@ describe('detail popup model', () => {
 		expect(calculateDetailContentHeight(1040, 1)).toBe(944);
 		expect(calculateDetailContentHeight(1040, 2)).toBe(888);
 		expect(calculateDetailContentHeight(400, 2)).toBe(320);
-	});
-
-	it('reserves hardware badge width without enlarging state labels', () => {
-		expect(detailBadgeMinimumWidthEm('SK Hynix', 'normal')).toBe(4.25);
-		expect(detailBadgeMinimumWidthEm('Intel Core Ultra 9 386H', 'normal')).toBe(11.5);
-		expect(detailBadgeMinimumWidthEm('20 个传感器', 'normal')).toBe(5.5);
-		expect(detailBadgeMinimumWidthEm('等待采样', 'waiting')).toBe(4.25);
-		expect(detailBadgeMinimumWidthEm('x'.repeat(100), 'normal')).toBe(14);
 	});
 
 	it('uses visible metric order while deduplicating repeated data sources', () => {
@@ -45,7 +36,7 @@ describe('detail popup model', () => {
 					metric: 'cpu.usage',
 					sourceId: 'cpu-a',
 					format: 'percent',
-					iconStyle: 'regular',
+					showIcon: true,
 					showLabel: true,
 					visible: true,
 				},
@@ -55,7 +46,7 @@ describe('detail popup model', () => {
 					metric: 'cpu.usage',
 					sourceId: 'cpu-b',
 					format: 'percent',
-					iconStyle: 'regular',
+					showIcon: true,
 					showLabel: true,
 					visible: true,
 				},

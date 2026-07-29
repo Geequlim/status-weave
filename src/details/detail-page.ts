@@ -4,6 +4,7 @@ import type {
 	MetricSample,
 	TelemetrySnapshot,
 } from '../telemetry/metrics/metric-sample';
+import type { IconStyle } from '../presentation/layout';
 
 export interface DetailPage {
 	readonly item: Cinnamon.PopupMenuItem;
@@ -17,6 +18,7 @@ export interface DetailPageContext {
 	readonly Gio: Cinnamon.GioModule;
 	readonly PopupBaseMenuItem: Cinnamon.PopupBaseMenuItemConstructor;
 	readonly St: Cinnamon.StModule;
+	readonly iconStyle: IconStyle;
 	readonly maxContentHeight: number;
 	readonly metadataPath: string;
 	readonly getHistory: <K extends MetricId>(

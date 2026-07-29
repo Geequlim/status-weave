@@ -1,4 +1,4 @@
-import type { LayoutSlot } from '../presentation/layout';
+import type { IconStyle, LayoutSlot } from '../presentation/layout';
 import {
 	metricKey,
 	type MetricId,
@@ -29,6 +29,7 @@ export interface DetailPopupDependencies extends Omit<DetailPageContext, 'maxCon
 
 export interface DetailPopup {
 	destroy(): void;
+	setIconStyle(iconStyle: IconStyle): void;
 	setLayout(layout: readonly LayoutSlot[]): void;
 	setOrientation(orientation: number): void;
 	toggle(): void;
@@ -55,6 +56,7 @@ export function createDetailPopup(dependencies: DetailPopupDependencies): Detail
 	let selectedKey: string | null = null;
 	let tabButtons = new Map<string, Cinnamon.StButton>();
 	let currentLayout: readonly LayoutSlot[] = [];
+	let currentIconStyle = dependencies.iconStyle;
 	let currentOrientation = orientation;
 
 	const select = (key: string) => {
@@ -80,7 +82,7 @@ export function createDetailPopup(dependencies: DetailPopupDependencies): Detail
 		});
 		const content = new St.BoxLayout({ style_class: 'status-weave-detail-tab-content' });
 		if (definition.iconName) {
-			const iconPath = `${metadataPath}/icons/phosphor/regular/${definition.iconName}-symbolic.svg`;
+			const iconPath = `${metadataPath}/icons/phosphor/${currentIconStyle}/${definition.iconName}-symbolic.svg`;
 			content.add_child(
 				new St.Icon({
 					gicon: new Gio.FileIcon({ file: Gio.file_new_for_path(iconPath) }),
@@ -125,6 +127,7 @@ export function createDetailPopup(dependencies: DetailPopupDependencies): Detail
 
 		const pageContext: DetailPageContext = {
 			...dependencies,
+			iconStyle: currentIconStyle,
 			maxContentHeight: calculateDetailContentHeight(
 				dependencies.getWorkAreaHeight(context.actor),
 				refs.length,
@@ -165,6 +168,11 @@ export function createDetailPopup(dependencies: DetailPopupDependencies): Detail
 		destroy: () => {
 			menuManager.removeMenu(menu);
 			menu.destroy();
+		},
+		setIconStyle: (iconStyle: IconStyle) => {
+			if (currentIconStyle === iconStyle) return;
+			currentIconStyle = iconStyle;
+			setLayout(currentLayout);
 		},
 		setLayout,
 		setOrientation: (nextOrientation: number) => {

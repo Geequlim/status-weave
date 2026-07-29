@@ -36,19 +36,25 @@ declare namespace Cinnamon {
 	}
 
 	interface PopupMenu extends SignalEmitter {
+		readonly actor: StActor;
+		readonly box: StActor;
+		readonly isOpen: boolean;
 		addMenuItem(item: PopupMenuItem): void;
 		destroy(): void;
+		open(animate?: boolean): void;
 		removeAll(): void;
 		toggle(): void;
 	}
 
 	interface PopupMenuItem extends SignalEmitter {
 		readonly actor: StActor;
+		readonly label: StLabel;
 		activate(event?: unknown, keepMenu?: boolean): void;
 		addActor(
 			actor: StActor,
 			params?: { align?: number; expand?: boolean; span?: number },
 		): void;
+		destroy(): void;
 		setSensitive(sensitive: boolean): void;
 	}
 
@@ -58,6 +64,7 @@ declare namespace Cinnamon {
 
 	interface PopupSwitchMenuItem extends PopupMenuItem {
 		readonly state: boolean;
+		setToggleState(state: boolean): void;
 	}
 
 	interface PopupMenuItemConstructor {
@@ -108,11 +115,18 @@ declare namespace Cinnamon {
 		add_style_pseudo_class(name: string): void;
 		add_child(child: StActor): void;
 		destroy_all_children(): void;
+		get_theme_node(): StThemeNode;
 		hide(): void;
+		insert_child_below(child: StActor, sibling: StActor): void;
 		remove_style_pseudo_class(name: string): void;
 		remove_style_class_name(name: string): void;
 		set_style(style: string): void;
+		set_width(width: number): void;
 		show(): void;
+	}
+
+	interface StThemeNode {
+		get_horizontal_padding(): number;
 	}
 
 	interface StBin extends StActor {
@@ -123,7 +137,18 @@ declare namespace Cinnamon {
 		new (properties?: { x_align?: number; x_expand?: boolean }): StBin;
 	}
 
+	interface ClutterText {
+		get_layout(): PangoLayout;
+		set_ellipsize(mode: number): void;
+	}
+
+	interface PangoLayout {
+		get_pixel_size(): [number | null, number | null];
+		set_width(width: number): void;
+	}
+
 	interface StLabel extends StActor {
+		get_clutter_text(): ClutterText;
 		set_text(text: string): void;
 	}
 
@@ -213,6 +238,12 @@ declare namespace Cinnamon {
 		};
 		ScrollView: StScrollViewConstructor;
 	}
+
+	interface PangoModule {
+		EllipsizeMode: {
+			NONE: number;
+		};
+	}
 }
 
 declare const imports: {
@@ -221,6 +252,7 @@ declare const imports: {
 	};
 	gi: {
 		Gio: Cinnamon.GioModule;
+		Pango: Cinnamon.PangoModule;
 		St: Cinnamon.StModule;
 	};
 	mainloop: {

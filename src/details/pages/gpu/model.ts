@@ -73,6 +73,11 @@ export function createGpuPageModel(sample: MetricSample<'gpu.device'> | undefine
 				label: '温度',
 				value: value ? optional(value.temperatureCelsius, formatTemperature) : '—',
 			},
+			{
+				id: 'fanSpeed',
+				label: '风扇转速',
+				value: value ? optional(value.fanSpeedPercent, formatPercentage) : '—',
+			},
 			{ id: 'memory', label: '显存', value: memory },
 			{ id: 'memoryPercent', label: '显存占用', value: memoryPercent },
 			{ id: 'power', label: '功耗', value: power },

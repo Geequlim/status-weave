@@ -14,7 +14,9 @@ import {
 import {
 	formatBinaryBytes,
 	formatByteRate,
+	formatCompactPercentage,
 	formatCompactNetworkRate,
+	formatCompactTemperature,
 	formatFrequencyHertz,
 	formatGigabytes,
 	formatNetworkRate,
@@ -31,9 +33,14 @@ export interface SystemSlotPresentation {
 	readonly widthClass: string;
 }
 
+export interface NetworkDirectionPresentation {
+	readonly direction: 'download' | 'upload';
+	readonly value: string;
+}
+
 function formatOptionalPercentage(value: number | null | undefined, precise: boolean): string {
 	if (value == null) return '—';
-	return formatPercentage(value, precise ? 1 : 0);
+	return precise ? formatPercentage(value, 1) : formatCompactPercentage(value);
 }
 
 function formatCpu(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
@@ -55,7 +62,7 @@ function formatMemory(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 	const available = formatGigabytes(memory.availableBytes);
 	switch (slot.format) {
 		case 'percent':
-			return formatPercentage(memory.usagePercent);
+			return formatCompactPercentage(memory.usagePercent);
 		case 'used':
 			return used;
 		case 'available':
@@ -65,7 +72,11 @@ function formatMemory(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 	}
 }
 
-function formatDemo(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
+function formatDemo(
+	snapshot: TelemetrySnapshot,
+	slot: MetricSlot,
+	compactTemperature = true,
+): string {
 	const value = findMetricSample(snapshot, {
 		metricId: 'demo.status',
 		sourceId: slot.sourceId,
@@ -73,7 +84,9 @@ function formatDemo(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 	if (!value) return '—';
 	switch (slot.format) {
 		case 'temperature':
-			return formatTemperature(value.temperatureCelsius);
+			return compactTemperature
+				? formatCompactTemperature(value.temperatureCelsius)
+				: formatTemperature(value.temperatureCelsius);
 		case 'bytes':
 			return formatBinaryBytes(value.bytes);
 		case 'rate':
@@ -85,19 +98,24 @@ function formatDemo(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 	}
 }
 
-function formatHwmonTemperature(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
+function formatHwmonTemperature(
+	snapshot: TelemetrySnapshot,
+	slot: MetricSlot,
+	compact = true,
+): string {
 	const value = findMetricSample(snapshot, {
 		metricId: 'temperature.hwmon',
 		sourceId: slot.sourceId,
 	})?.value;
 	if (!value) return '—';
+	const format = compact ? formatCompactTemperature : formatTemperature;
 	if (slot.format === 'temperature-peak') {
-		return `${formatTemperature(value.peakCelsius)}`;
+		return format(value.peakCelsius);
 	}
 	if (slot.format === 'temperature-average') {
-		return `${formatTemperature(value.averageCelsius)}`;
+		return format(value.averageCelsius);
 	}
-	return formatTemperature(value.primaryCelsius);
+	return format(value.primaryCelsius);
 }
 
 function formatHwmonFan(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
@@ -111,7 +129,7 @@ function formatHwmonFan(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 	return formatRpm(value.primaryRpm);
 }
 
-function formatGpu(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
+function formatGpu(snapshot: TelemetrySnapshot, slot: MetricSlot, compact = true): string {
 	const sample = findMetricSample(snapshot, {
 		metricId: 'gpu.device',
 		sourceId: slot.sourceId,
@@ -123,7 +141,9 @@ function formatGpu(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 		case 'gpu-temperature':
 			return value.temperatureCelsius === null
 				? '—'
-				: formatTemperature(value.temperatureCelsius);
+				: compact
+					? formatCompactTemperature(value.temperatureCelsius)
+					: formatTemperature(value.temperatureCelsius);
 		case 'gpu-memory-used':
 			return value.memoryUsedBytes === null ? '—' : formatGigabytes(value.memoryUsedBytes);
 		case 'gpu-memory-used-total':
@@ -137,24 +157,35 @@ function formatGpu(snapshot: TelemetrySnapshot, slot: MetricSlot): string {
 				value.memoryTotalBytes === null ||
 				value.memoryTotalBytes === 0
 				? '—'
-				: formatPercentage((value.memoryUsedBytes / value.memoryTotalBytes) * 100);
+				: formatCompactPercentage((value.memoryUsedBytes / value.memoryTotalBytes) * 100);
 		case 'gpu-power':
 			return value.powerWatts === null ? '—' : formatWatts(value.powerWatts);
 		case 'gpu-clock':
 			return value.graphicsClockHertz === null
 				? '—'
 				: formatFrequencyHertz(value.graphicsClockHertz);
+		case 'gpu-fan-speed':
+			return formatOptionalPercentage(value.fanSpeedPercent, false);
 		default:
 			return formatOptionalPercentage(value.utilizationPercent, false);
 	}
 }
 
-function formatNetwork(snapshot: TelemetrySnapshot, slot: MetricSlot, compact = true): string {
+function formatNetworkRates(
+	snapshot: TelemetrySnapshot,
+	slot: MetricSlot,
+	compact: boolean,
+): {
+	readonly download: string;
+	readonly downloadBytesPerSecond: number | null;
+	readonly upload: string;
+	readonly uploadBytesPerSecond: number | null;
+} | null {
 	const sample = findMetricSample(snapshot, {
 		metricId: 'network.traffic',
 		sourceId: slot.sourceId,
 	});
-	if (!sample?.value || sample.status === 'unavailable') return '离线';
+	if (!sample?.value || sample.status === 'unavailable') return null;
 	const download =
 		sample.value.downloadBytesPerSecond === null
 			? '—'
@@ -167,24 +198,53 @@ function formatNetwork(snapshot: TelemetrySnapshot, slot: MetricSlot, compact = 
 			: compact
 				? formatCompactNetworkRate(sample.value.uploadBytesPerSecond)
 				: formatNetworkRate(sample.value.uploadBytesPerSecond);
+	return {
+		download,
+		downloadBytesPerSecond: sample.value.downloadBytesPerSecond,
+		upload,
+		uploadBytesPerSecond: sample.value.uploadBytesPerSecond,
+	};
+}
+
+export function formatNetworkDirections(
+	snapshot: TelemetrySnapshot,
+	slot: MetricSlot,
+): readonly NetworkDirectionPresentation[] | null {
+	const rates = formatNetworkRates(snapshot, slot, true);
+	if (!rates) return null;
 	switch (slot.format) {
 		case 'network-download':
-			return `↓ ${download}`;
+			return [{ direction: 'download', value: rates.download }];
 		case 'network-upload':
-			return `↑ ${upload}`;
+			return [{ direction: 'upload', value: rates.upload }];
+		case 'network-both':
+			return [
+				{ direction: 'download', value: rates.download },
+				{ direction: 'upload', value: rates.upload },
+			];
+		default:
+			return null;
+	}
+}
+
+function formatNetwork(snapshot: TelemetrySnapshot, slot: MetricSlot, compact = true): string {
+	const rates = formatNetworkRates(snapshot, slot, compact);
+	if (!rates) return '离线';
+	switch (slot.format) {
+		case 'network-download':
+			return `↓ ${rates.download}`;
+		case 'network-upload':
+			return `↑ ${rates.upload}`;
 		case 'network-total':
-			return sample.value.downloadBytesPerSecond === null ||
-				sample.value.uploadBytesPerSecond === null
+			return rates.downloadBytesPerSecond === null || rates.uploadBytesPerSecond === null
 				? '—'
 				: compact
 					? formatCompactNetworkRate(
-							sample.value.downloadBytesPerSecond + sample.value.uploadBytesPerSecond,
+							rates.downloadBytesPerSecond + rates.uploadBytesPerSecond,
 						)
-					: formatNetworkRate(
-							sample.value.downloadBytesPerSecond + sample.value.uploadBytesPerSecond,
-						);
+					: formatNetworkRate(rates.downloadBytesPerSecond + rates.uploadBytesPerSecond);
 		default:
-			return `↓ ${download}  ↑ ${upload}`;
+			return `↓ ${rates.download}  ↑ ${rates.upload}`;
 	}
 }
 
@@ -290,6 +350,8 @@ function unitLabel(slot: MetricSlot): string {
 				return 'W';
 			case 'gpu-clock':
 				return 'GHz';
+			case 'gpu-fan-speed':
+				return '%';
 			default:
 				return '%';
 		}
@@ -328,7 +390,13 @@ export function formatSystemTooltip(
 		const value =
 			slot.metric === 'network.traffic'
 				? formatNetwork(snapshot, slot, false)
-				: presentation.value;
+				: slot.metric === 'temperature.hwmon'
+					? formatHwmonTemperature(snapshot, slot, false)
+					: slot.metric === 'gpu.device'
+						? formatGpu(snapshot, slot, false)
+						: slot.metric === 'demo.status'
+							? formatDemo(snapshot, slot, false)
+							: presentation.value;
 		lines.push(
 			`${metricLabels[slot.metric]}（${sourceLabel(slot)}，${unitLabel(slot)}）`,
 			`${value} · ${metricStatusLabels[presentation.status]}`,

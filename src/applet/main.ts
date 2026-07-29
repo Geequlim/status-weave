@@ -7,6 +7,7 @@ import {
 	loadSettingsModule,
 	loadUiToolkit,
 } from '../platform/cinnamon';
+import { cancelTimeout, scheduleTimeout } from '../platform/runtime';
 import {
 	addMetricSlot,
 	addSeparatorSlot,
@@ -14,23 +15,25 @@ import {
 	canMoveSlot,
 	defaultLayout,
 	duplicateSlot,
-	iconStyleOptions,
 	type LayoutSlot,
 	metricIconNames,
 	metricFormatOptions,
 	metricLabels,
 	metricPresetOptions,
+	type MetricFormatId,
 	type MetricSlot,
 	moveSlot,
+	normalizeIconStyle,
 	normalizeLayout,
 	removeSlot,
 	setSlotFormat,
-	setSlotIconStyle,
+	setSlotShowIcon,
 	setSlotShowLabel,
 	setSlotSourceId,
 	setSlotVisible,
 } from '../presentation/layout';
 import {
+	formatNetworkDirections,
 	formatSystemLabel,
 	formatSystemSlotPresentation,
 	formatSystemTooltip,
@@ -46,6 +49,7 @@ import {
 } from '../telemetry/system-telemetry-service';
 
 const UUID = 'status-weave@geequlim';
+const ICON_STYLE_KEY = 'icon-style';
 const LAYOUT_KEY = 'layout';
 
 export interface AppletInstance {
@@ -75,6 +79,7 @@ export function createApplet(
 	const context = new TextApplet(orientation, panelHeight, instanceId);
 	context.setAllowedLayout(AllowedLayout.HORIZONTAL);
 	const settings = new AppletSettings(context, UUID, instanceId);
+	let iconStyle = normalizeIconStyle(settings.getValue(ICON_STYLE_KEY));
 	const storedLayout = settings.getValue(LAYOUT_KEY);
 	let layout = normalizeLayout(storedLayout);
 	if (JSON.stringify(storedLayout) !== JSON.stringify(layout)) {
@@ -96,6 +101,7 @@ export function createApplet(
 		context,
 		getHistory: (ref, from, to) => systemTelemetryService.getHistory(ref, from, to),
 		getWorkAreaHeight,
+		iconStyle,
 		metadataPath,
 		orientation,
 	});
@@ -115,21 +121,24 @@ export function createApplet(
 	const renderPanel = (snapshot: TelemetrySnapshot) => {
 		panelLayout.destroy_all_children();
 		const iconSize = Math.max(12, Math.min(16, panelHeight - 8));
+		const createIconActor = (name: string, size: number, styleClass: string) => {
+			const iconPath = `${metadataPath}/icons/phosphor/${iconStyle}/${name}-symbolic.svg`;
+			return new St.Icon({
+				gicon: new Gio.FileIcon({ file: Gio.file_new_for_path(iconPath) }),
+				icon_size: size,
+				icon_type: St.IconType.SYMBOLIC,
+				style_class: styleClass,
+			});
+		};
 		const createMetricActor = (slot: MetricSlot, grouped: boolean) => {
 			const presentation = formatSystemSlotPresentation(snapshot, slot);
 			const metricLayout = new St.BoxLayout({
 				style_class: `status-weave-metric status-weave-status-${presentation.status}`,
 			});
 			const iconName = metricIconNames[slot.metric];
-			if (slot.iconStyle !== 'none' && iconName) {
-				const iconPath = `${metadataPath}/icons/phosphor/${slot.iconStyle}/${iconName}-symbolic.svg`;
+			if (slot.showIcon && iconName) {
 				metricLayout.add_child(
-					new St.Icon({
-						gicon: new Gio.FileIcon({ file: Gio.file_new_for_path(iconPath) }),
-						icon_size: iconSize,
-						icon_type: St.IconType.SYMBOLIC,
-						style_class: 'applet-icon status-weave-icon',
-					}),
+					createIconActor(iconName, iconSize, 'applet-icon status-weave-icon'),
 				);
 			}
 			if (presentation.label) {
@@ -140,14 +149,45 @@ export function createApplet(
 					}),
 				);
 			}
-			metricLayout.add_child(
-				new St.Label({
-					text: presentation.value,
-					style_class: `applet-label status-weave-value status-weave-value-${presentation.widthClass}${
-						grouped ? ' status-weave-value-grouped' : ''
-					}`,
-				}),
-			);
+			const valueStyleClass = `status-weave-value status-weave-value-${presentation.widthClass}${
+				grouped ? ' status-weave-value-grouped' : ''
+			}`;
+			const networkDirections =
+				slot.metric === 'network.traffic' ? formatNetworkDirections(snapshot, slot) : null;
+			if (networkDirections) {
+				const directions = new St.BoxLayout({
+					style_class: `${valueStyleClass} status-weave-network-directions`,
+				});
+				let firstDirection = true;
+				for (const direction of networkDirections) {
+					directions.add_child(
+						createIconActor(
+							`arrow-${direction.direction === 'download' ? 'down' : 'up'}`,
+							Math.max(10, iconSize - 2),
+							`applet-icon status-weave-network-direction-icon${
+								firstDirection
+									? ''
+									: ' status-weave-network-direction-icon-secondary'
+							}`,
+						),
+					);
+					directions.add_child(
+						new St.Label({
+							text: direction.value,
+							style_class: 'applet-label status-weave-network-direction-value',
+						}),
+					);
+					firstDirection = false;
+				}
+				metricLayout.add_child(directions);
+			} else {
+				metricLayout.add_child(
+					new St.Label({
+						text: presentation.value,
+						style_class: `applet-label ${valueStyleClass}`,
+					}),
+				);
+			}
 			return metricLayout;
 		};
 
@@ -201,21 +241,41 @@ export function createApplet(
 		renderPanel(latestSnapshot);
 		detailPopup.update(latestSnapshot);
 	};
+	const iconStyleSignal = settings.connect(`changed::${ICON_STYLE_KEY}`, (...args: unknown[]) => {
+		iconStyle = normalizeIconStyle(args[args.length - 1]);
+		detailPopup.setIconStyle(iconStyle);
+		render();
+	});
+	let layoutMenuSyncTimeoutId: number | null = null;
+	let syncLayoutMenu = () => {};
 	const saveLayout = (nextLayout: readonly LayoutSlot[]) => {
 		layout = normalizeLayout(nextLayout);
 		settings.setValue(LAYOUT_KEY, layout);
 		detailPopup.setLayout(layout);
 		telemetrySubscription?.setMetrics(visibleMetricIds());
 		render();
+		syncLayoutMenu();
 	};
 	const keepMenuOpen = <T extends Cinnamon.PopupMenuItem>(item: T): T => {
 		item.activate = (event?: unknown) => item.emit('activate', event, true);
 		return item;
 	};
 
-	const addMetricAction = (menu: Cinnamon.PopupMenu, label: string, metric: MetricId) => {
+	const addMetricAction = (
+		menu: Cinnamon.PopupMenu,
+		label: string,
+		metric: MetricId,
+		format?: MetricFormatId,
+	) => {
 		const item = keepMenuOpen(new PopupMenuItem(label));
-		item.connect('activate', () => saveLayout(addMetricSlot(layout, metric)));
+		item.connect('activate', () => {
+			let nextLayout = addMetricSlot(layout, metric);
+			const added = nextLayout[nextLayout.length - 1];
+			if (format && added?.kind === 'metric') {
+				nextLayout = setSlotFormat(nextLayout, added.id, format);
+			}
+			saveLayout(nextLayout);
+		});
 		menu.addMenuItem(item);
 	};
 
@@ -225,6 +285,7 @@ export function createApplet(
 	addMetricAction(addMenu.menu, '温度', 'temperature.hwmon');
 	addMetricAction(addMenu.menu, '风扇', 'fan.hwmon');
 	addMetricAction(addMenu.menu, 'NVIDIA 显卡', 'gpu.device');
+	addMetricAction(addMenu.menu, 'NVIDIA 显卡风扇转速', 'gpu.device', 'gpu-fan-speed');
 	addMetricAction(addMenu.menu, '网速', 'network.traffic');
 	addMetricAction(addMenu.menu, '状态演示（开发）', 'demo.status');
 	addMenu.menu.addMenuItem(new PopupSeparatorMenuItem());
@@ -233,134 +294,234 @@ export function createApplet(
 	addMenu.menu.addMenuItem(addSeparator);
 	context._applet_context_menu.addMenuItem(addMenu);
 
-	const rebuildLayoutMenu = (menu: Cinnamon.PopupMenu) => {
-		menu.removeAll();
-		for (const slot of layout) {
-			const title =
-				slot.kind === 'separator'
-					? '分隔符'
-					: `${metricLabels[slot.metric]} · ${
-							metricFormatOptions[slot.metric].find(
-								(option) => option.id === slot.format,
-							)?.label ?? slot.format
-						}`;
-			const slotMenu = new PopupSubMenuMenuItem(title);
-			const visibility = new PopupSwitchMenuItem('显示', slot.visible);
-			visibility.connect('toggled', (...args: unknown[]) => {
+	interface LayoutMenuEntry {
+		readonly formatItems: Map<string, Cinnamon.PopupMenuItem>;
+		readonly item: Cinnamon.PopupSubMenuItem;
+		readonly kind: LayoutSlot['kind'];
+		readonly moveLeft: Cinnamon.PopupMenuItem;
+		readonly moveRight: Cinnamon.PopupMenuItem;
+		readonly showIcon?: Cinnamon.PopupSwitchMenuItem;
+		readonly showLabel?: Cinnamon.PopupSwitchMenuItem;
+		readonly sourceItems: Map<string, { item: Cinnamon.PopupMenuItem; label: string }>;
+		readonly visibility: Cinnamon.PopupSwitchMenuItem;
+	}
+
+	const layoutMenuEntries = new Map<string, LayoutMenuEntry>();
+	let layoutItemsEnd: Cinnamon.PopupMenuItem | null = null;
+	let layoutResetItem: Cinnamon.PopupMenuItem | null = null;
+
+	const slotMenuTitle = (slot: LayoutSlot): string =>
+		slot.kind === 'separator'
+			? '分隔符'
+			: `${metricLabels[slot.metric]} · ${
+					metricFormatOptions[slot.metric].find((option) => option.id === slot.format)
+						?.label ?? slot.format
+				}`;
+
+	const createLayoutMenuEntry = (slot: LayoutSlot): LayoutMenuEntry => {
+		const item = new PopupSubMenuMenuItem(slotMenuTitle(slot));
+		const visibility = new PopupSwitchMenuItem('显示', slot.visible);
+		visibility.connect('toggled', (...args: unknown[]) => {
+			const state = args[args.length - 1];
+			const visible = typeof state === 'boolean' ? state : visibility.state;
+			saveLayout(setSlotVisible(layout, slot.id, visible));
+		});
+		item.menu.addMenuItem(visibility);
+
+		const formatItems = new Map<string, Cinnamon.PopupMenuItem>();
+		const sourceItems = new Map<string, { item: Cinnamon.PopupMenuItem; label: string }>();
+		let showLabel: Cinnamon.PopupSwitchMenuItem | undefined;
+		let showIcon: Cinnamon.PopupSwitchMenuItem | undefined;
+
+		if (slot.kind === 'metric') {
+			const presetMenu = new PopupSubMenuMenuItem('显示预设');
+			for (const option of metricPresetOptions) {
+				const presetItem = keepMenuOpen(new PopupMenuItem(option.label));
+				presetItem.connect('activate', () =>
+					saveLayout(applySlotPreset(layout, slot.id, option.id)),
+				);
+				presetMenu.menu.addMenuItem(presetItem);
+			}
+			item.menu.addMenuItem(presetMenu);
+
+			showLabel = new PopupSwitchMenuItem('显示标题', slot.showLabel);
+			showLabel.connect('toggled', (...args: unknown[]) => {
 				const state = args[args.length - 1];
-				const visible = typeof state === 'boolean' ? state : visibility.state;
-				saveLayout(setSlotVisible(layout, slot.id, visible));
+				const show = typeof state === 'boolean' ? state : showLabel!.state;
+				saveLayout(setSlotShowLabel(layout, slot.id, show));
 			});
-			slotMenu.menu.addMenuItem(visibility);
+			item.menu.addMenuItem(showLabel);
 
-			if (slot.kind === 'metric') {
-				const presetMenu = new PopupSubMenuMenuItem('显示预设');
-				for (const option of metricPresetOptions) {
-					const presetItem = keepMenuOpen(new PopupMenuItem(option.label));
-					presetItem.connect('activate', () =>
-						saveLayout(applySlotPreset(layout, slot.id, option.id)),
+			const formatMenu = new PopupSubMenuMenuItem('显示格式');
+			for (const option of metricFormatOptions[slot.metric]) {
+				const formatItem = keepMenuOpen(new PopupMenuItem(option.label));
+				formatItem.connect('activate', () =>
+					saveLayout(setSlotFormat(layout, slot.id, option.id)),
+				);
+				formatItems.set(option.id, formatItem);
+				formatMenu.menu.addMenuItem(formatItem);
+			}
+			item.menu.addMenuItem(formatMenu);
+
+			if (slot.metric === 'network.traffic') {
+				const sourceMenu = new PopupSubMenuMenuItem('网络来源');
+				const automatic = latestSnapshot
+					? findMetricSample(latestSnapshot, {
+							metricId: 'network.traffic',
+							sourceId: 'network:auto',
+						})
+					: undefined;
+				const sources = [
+					{ id: 'network:auto', label: '自动主连接' },
+					{ id: 'network:physical', label: '所有物理接口' },
+					...(automatic?.value?.interfaces.map((entry) => ({
+						id: `network:interface:${entry.name}`,
+						label: entry.name,
+					})) ?? []),
+				];
+				for (const source of sources) {
+					const sourceItem = keepMenuOpen(new PopupMenuItem(source.label));
+					sourceItem.connect('activate', () =>
+						saveLayout(setSlotSourceId(layout, slot.id, source.id)),
 					);
-					presetMenu.menu.addMenuItem(presetItem);
+					sourceItems.set(source.id, { item: sourceItem, label: source.label });
+					sourceMenu.menu.addMenuItem(sourceItem);
 				}
-				slotMenu.menu.addMenuItem(presetMenu);
-
-				const showLabel = new PopupSwitchMenuItem('显示标题', slot.showLabel);
-				showLabel.connect('toggled', (...args: unknown[]) => {
-					const state = args[args.length - 1];
-					const show = typeof state === 'boolean' ? state : showLabel.state;
-					saveLayout(setSlotShowLabel(layout, slot.id, show));
-				});
-				slotMenu.menu.addMenuItem(showLabel);
-
-				const formatMenu = new PopupSubMenuMenuItem('显示格式');
-				for (const option of metricFormatOptions[slot.metric]) {
-					const formatItem = keepMenuOpen(
-						new PopupMenuItem(
-							`${option.id === slot.format ? '✓ ' : ''}${option.label}`,
-						),
-					);
-					formatItem.connect('activate', () =>
-						saveLayout(setSlotFormat(layout, slot.id, option.id)),
-					);
-					formatMenu.menu.addMenuItem(formatItem);
-				}
-				slotMenu.menu.addMenuItem(formatMenu);
-
-				if (slot.metric === 'network.traffic') {
-					const sourceMenu = new PopupSubMenuMenuItem('网络来源');
-					const automatic = latestSnapshot
-						? findMetricSample(latestSnapshot, {
-								metricId: 'network.traffic',
-								sourceId: 'network:auto',
-							})
-						: undefined;
-					const sources = [
-						{ id: 'network:auto', label: '自动主连接' },
-						{ id: 'network:physical', label: '所有物理接口' },
-						...(automatic?.value?.interfaces.map((entry) => ({
-							id: `network:interface:${entry.name}`,
-							label: entry.name,
-						})) ?? []),
-					];
-					for (const source of sources) {
-						const sourceItem = keepMenuOpen(
-							new PopupMenuItem(
-								`${source.id === slot.sourceId ? '✓ ' : ''}${source.label}`,
-							),
-						);
-						sourceItem.connect('activate', () =>
-							saveLayout(setSlotSourceId(layout, slot.id, source.id)),
-						);
-						sourceMenu.menu.addMenuItem(sourceItem);
-					}
-					slotMenu.menu.addMenuItem(sourceMenu);
-				}
-
-				if (metricIconNames[slot.metric]) {
-					const iconMenu = new PopupSubMenuMenuItem('图标样式');
-					for (const option of iconStyleOptions) {
-						const iconItem = keepMenuOpen(
-							new PopupMenuItem(
-								`${option.id === slot.iconStyle ? '✓ ' : ''}${option.label}`,
-							),
-						);
-						iconItem.connect('activate', () =>
-							saveLayout(setSlotIconStyle(layout, slot.id, option.id)),
-						);
-						iconMenu.menu.addMenuItem(iconItem);
-					}
-					slotMenu.menu.addMenuItem(iconMenu);
-				}
+				item.menu.addMenuItem(sourceMenu);
 			}
 
-			slotMenu.menu.addMenuItem(new PopupSeparatorMenuItem());
-			const moveLeft = keepMenuOpen(new PopupMenuItem('向左移动'));
-			moveLeft.setSensitive(canMoveSlot(layout, slot.id, 'left'));
-			moveLeft.connect('activate', () => saveLayout(moveSlot(layout, slot.id, 'left')));
-			slotMenu.menu.addMenuItem(moveLeft);
-
-			const moveRight = keepMenuOpen(new PopupMenuItem('向右移动'));
-			moveRight.setSensitive(canMoveSlot(layout, slot.id, 'right'));
-			moveRight.connect('activate', () => saveLayout(moveSlot(layout, slot.id, 'right')));
-			slotMenu.menu.addMenuItem(moveRight);
-
-			const duplicate = keepMenuOpen(new PopupMenuItem('复制'));
-			duplicate.connect('activate', () => saveLayout(duplicateSlot(layout, slot.id)));
-			slotMenu.menu.addMenuItem(duplicate);
-
-			const remove = keepMenuOpen(new PopupMenuItem('移除'));
-			remove.connect('activate', () => saveLayout(removeSlot(layout, slot.id)));
-			slotMenu.menu.addMenuItem(remove);
-			menu.addMenuItem(slotMenu);
+			if (metricIconNames[slot.metric]) {
+				showIcon = new PopupSwitchMenuItem('显示图标', slot.showIcon);
+				showIcon.connect('toggled', (...args: unknown[]) => {
+					const state = args[args.length - 1];
+					const show = typeof state === 'boolean' ? state : showIcon!.state;
+					saveLayout(setSlotShowIcon(layout, slot.id, show));
+				});
+				item.menu.addMenuItem(showIcon);
+			}
 		}
-		if (layout.length > 0) menu.addMenuItem(new PopupSeparatorMenuItem());
-		const reset = keepMenuOpen(new PopupMenuItem('重置当前布局'));
-		reset.connect('activate', () => saveLayout(defaultLayout));
-		menu.addMenuItem(reset);
+
+		item.menu.addMenuItem(new PopupSeparatorMenuItem());
+		const moveLeft = keepMenuOpen(new PopupMenuItem('向左移动'));
+		moveLeft.connect('activate', () => saveLayout(moveSlot(layout, slot.id, 'left')));
+		item.menu.addMenuItem(moveLeft);
+
+		const moveRight = keepMenuOpen(new PopupMenuItem('向右移动'));
+		moveRight.connect('activate', () => saveLayout(moveSlot(layout, slot.id, 'right')));
+		item.menu.addMenuItem(moveRight);
+
+		const duplicate = keepMenuOpen(new PopupMenuItem('复制'));
+		duplicate.connect('activate', () => saveLayout(duplicateSlot(layout, slot.id)));
+		item.menu.addMenuItem(duplicate);
+
+		const remove = keepMenuOpen(new PopupMenuItem('移除'));
+		remove.connect('activate', () => saveLayout(removeSlot(layout, slot.id)));
+		item.menu.addMenuItem(remove);
+
+		return {
+			formatItems,
+			item,
+			kind: slot.kind,
+			moveLeft,
+			moveRight,
+			showIcon,
+			showLabel,
+			sourceItems,
+			visibility,
+		};
+	};
+
+	const updateLayoutMenuEntry = (entry: LayoutMenuEntry, slot: LayoutSlot) => {
+		entry.item.label.set_text(slotMenuTitle(slot));
+		entry.visibility.setToggleState(slot.visible);
+		entry.moveLeft.setSensitive(canMoveSlot(layout, slot.id, 'left'));
+		entry.moveRight.setSensitive(canMoveSlot(layout, slot.id, 'right'));
+		if (slot.kind !== 'metric') return;
+		entry.showLabel?.setToggleState(slot.showLabel);
+		entry.showIcon?.setToggleState(slot.showIcon);
+		for (const option of metricFormatOptions[slot.metric]) {
+			entry.formatItems
+				.get(option.id)
+				?.label.set_text(`${option.id === slot.format ? '✓ ' : ''}${option.label}`);
+		}
+		for (const [sourceId, source] of entry.sourceItems) {
+			source.item.label.set_text(`${sourceId === slot.sourceId ? '✓ ' : ''}${source.label}`);
+		}
+	};
+
+	const syncLayoutMenuEntries = (menu: Cinnamon.PopupMenu) => {
+		const slotsById = new Map(layout.map((slot) => [slot.id, slot]));
+		for (const [id, entry] of layoutMenuEntries) {
+			const slot = slotsById.get(id);
+			if (slot && slot.kind === entry.kind) continue;
+			entry.item.destroy();
+			layoutMenuEntries.delete(id);
+		}
+		for (const slot of layout) {
+			if (layoutMenuEntries.has(slot.id)) continue;
+			const entry = createLayoutMenuEntry(slot);
+			layoutMenuEntries.set(slot.id, entry);
+			menu.addMenuItem(entry.item);
+		}
+
+		if (layout.length > 0 && !layoutItemsEnd) {
+			layoutItemsEnd = new PopupSeparatorMenuItem();
+			menu.addMenuItem(layoutItemsEnd);
+		} else if (layout.length === 0 && layoutItemsEnd) {
+			layoutItemsEnd.destroy();
+			layoutItemsEnd = null;
+		}
+
+		if (layoutItemsEnd && layoutResetItem) {
+			menu.box.insert_child_below(layoutItemsEnd.actor, layoutResetItem.actor);
+			let before = layoutItemsEnd.actor;
+			for (let index = layout.length - 1; index >= 0; index -= 1) {
+				const slot = layout[index]!;
+				const entry = layoutMenuEntries.get(slot.id);
+				if (!entry) continue;
+				menu.box.insert_child_below(entry.item.actor, before);
+				menu.box.insert_child_below(entry.item.menu.actor, before);
+				before = entry.item.actor;
+			}
+		}
+		for (const slot of layout) {
+			const entry = layoutMenuEntries.get(slot.id);
+			if (entry) updateLayoutMenuEntry(entry, slot);
+		}
+	};
+
+	const rebuildLayoutMenu = (menu: Cinnamon.PopupMenu) => {
+		menu.removeAll();
+		layoutMenuEntries.clear();
+		layoutItemsEnd = null;
+		layoutResetItem = null;
+		for (const slot of layout) {
+			const entry = createLayoutMenuEntry(slot);
+			layoutMenuEntries.set(slot.id, entry);
+			menu.addMenuItem(entry.item);
+		}
+		if (layout.length > 0) {
+			layoutItemsEnd = new PopupSeparatorMenuItem();
+			menu.addMenuItem(layoutItemsEnd);
+		}
+		layoutResetItem = keepMenuOpen(new PopupMenuItem('重置当前布局'));
+		layoutResetItem.connect('activate', () => saveLayout(defaultLayout));
+		menu.addMenuItem(layoutResetItem);
+		for (const slot of layout) {
+			const entry = layoutMenuEntries.get(slot.id);
+			if (entry) updateLayoutMenuEntry(entry, slot);
+		}
 	};
 
 	const layoutMenu = new PopupSubMenuMenuItem('当前布局');
 	rebuildLayoutMenu(layoutMenu.menu);
+	syncLayoutMenu = () => {
+		if (layoutMenuSyncTimeoutId !== null) return;
+		layoutMenuSyncTimeoutId = scheduleTimeout(0, () => {
+			layoutMenuSyncTimeoutId = null;
+			syncLayoutMenuEntries(layoutMenu.menu);
+		});
+	};
 	context._applet_context_menu.addMenuItem(layoutMenu);
 	const contextMenuSignal = context._applet_context_menu.connect(
 		'open-state-changed',
@@ -382,6 +543,8 @@ export function createApplet(
 	});
 	context.on_applet_removed_from_panel = () => {
 		telemetrySubscription?.unsubscribe();
+		if (layoutMenuSyncTimeoutId !== null) cancelTimeout(layoutMenuSyncTimeoutId);
+		settings.disconnect(iconStyleSignal);
 		context._applet_context_menu.disconnect(contextMenuSignal);
 		detailPopup.destroy();
 		settings.finalize();

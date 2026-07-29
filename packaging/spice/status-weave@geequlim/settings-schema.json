@@ -8,6 +8,16 @@
 		"default": true,
 		"description": "显示实例编号"
 	},
+	"icon-style": {
+		"type": "combobox",
+		"default": "regular",
+		"description": "图标样式",
+		"options": {
+			"线性": "regular",
+			"粗线": "bold",
+			"填充": "fill"
+		}
+	},
 	"layout": {
 		"type": "generic",
 		"default": [
@@ -17,7 +27,7 @@
 				"metric": "cpu.usage",
 				"sourceId": "system",
 				"format": "percent",
-				"iconStyle": "regular",
+				"showIcon": true,
 				"showLabel": true,
 				"visible": true
 			},
@@ -32,7 +42,7 @@
 				"metric": "memory.usage",
 				"sourceId": "system",
 				"format": "used-total",
-				"iconStyle": "regular",
+				"showIcon": true,
 				"showLabel": true,
 				"visible": true
 			}

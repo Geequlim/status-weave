@@ -18,13 +18,18 @@
 	text-align: left;
 }
 
-.status-weave-value-percent,
-.status-weave-value-memory-percent {
-	min-width: 0;
+.status-weave-value.status-weave-value-percent,
+.status-weave-value.status-weave-value-memory-percent,
+.status-weave-value.status-weave-value-gpu-utilization,
+.status-weave-value.status-weave-value-gpu-memory-percent,
+.status-weave-value.status-weave-value-gpu-fan-speed {
+	min-width: 2.75em;
+	text-align: right;
 }
 
-.status-weave-value-percent-precise {
-	min-width: 0;
+.status-weave-value.status-weave-value-percent-precise {
+	min-width: 4em;
+	text-align: right;
 }
 
 .status-weave-value-memory-used {
@@ -70,11 +75,9 @@
 	min-width: 0;
 }
 
-.status-weave-value-gpu-utilization,
 .status-weave-value-gpu-temperature,
 .status-weave-value-gpu-memory-used,
 .status-weave-value-gpu-memory-used-total,
-.status-weave-value-gpu-memory-percent,
 .status-weave-value-gpu-power,
 .status-weave-value-gpu-clock {
 	min-width: 0;
@@ -91,6 +94,18 @@
 
 .status-weave-value-network-total {
 	width: 3.5em;
+}
+
+.status-weave-network-directions {
+	spacing: 0.15em;
+}
+
+.status-weave-network-direction-icon {
+	color: inherit;
+}
+
+.status-weave-network-direction-icon-secondary {
+	margin-left: 0.35em;
 }
 
 .status-weave-value-grouped {
@@ -113,6 +128,10 @@
 
 .status-weave-detail-header {
 	font-weight: bold;
+}
+
+.status-weave-detail-header-block {
+	spacing: 0.35em;
 }
 
 .status-weave-detail-header-row {
@@ -182,7 +201,7 @@
 }
 
 .status-weave-detail-value {
-	width: 8em;
+	min-width: 8em;
 	text-align: right;
 }
 
@@ -219,7 +238,6 @@
 }
 
 .status-weave-detail-status {
-	min-width: 4.25em;
 	padding: 0.15em 0.55em;
 	border-radius: 999px;
 	background-color: rgba(128, 128, 128, 0.24);

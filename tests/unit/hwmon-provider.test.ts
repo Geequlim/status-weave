@@ -9,6 +9,7 @@ vi.mock('../../src/platform/runtime', () => ({ executeCommand, readTextFile }));
 
 import {
 	HwmonProvider,
+	selectPrimaryTemperatureSensor,
 	stableHwmonDevicePath,
 	temperatureStatus,
 } from '../../src/telemetry/providers/hwmon-provider';
@@ -121,5 +122,29 @@ describe('hwmon helpers', () => {
 		};
 		expect(temperatureStatus([sensor])).toBe('warning');
 		expect(temperatureStatus([{ ...sensor, valueCelsius: 100 }])).toBe('critical');
+	});
+
+	it('selects CPU package temperatures instead of unrelated first sensors', () => {
+		const sensor = (
+			deviceName: string,
+			label: string,
+			valueCelsius: number,
+		): Parameters<typeof selectPrimaryTemperatureSensor>[0][number] => ({
+			criticalCelsius: null,
+			deviceName,
+			id: `${deviceName}:${label}`,
+			label,
+			maximumCelsius: null,
+			valueCelsius,
+		});
+		const nvme = sensor('nvme', 'Composite', 45);
+		const tctl = sensor('k10temp', 'Tctl', 58);
+		const tdie = sensor('k10temp', 'Tdie', 56);
+		expect(selectPrimaryTemperatureSensor([nvme, tctl])).toBe(tctl);
+		expect(selectPrimaryTemperatureSensor([nvme, tctl, tdie])).toBe(tdie);
+
+		const intelPackage = sensor('coretemp', 'Package id 0', 52);
+		expect(selectPrimaryTemperatureSensor([nvme, intelPackage])).toBe(intelPackage);
+		expect(selectPrimaryTemperatureSensor([nvme])).toBe(nvme);
 	});
 });

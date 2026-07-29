@@ -73,13 +73,37 @@ export function temperatureStatus(sensors: readonly HwmonTemperatureSensor[]): M
 const average = (values: readonly number[]): number =>
 	values.reduce((sum, value) => sum + value, 0) / values.length;
 
+const cpuTemperaturePriority = (sensor: HwmonTemperatureSensor): number => {
+	const deviceName = sensor.deviceName.toLowerCase();
+	const label = sensor.label.toLowerCase().replace(/[\s-]+/g, '_');
+	if (deviceName === 'coretemp' && label.startsWith('package')) return 100;
+	if (deviceName === 'k10temp' || deviceName === 'zenpower') {
+		if (label === 'tdie') return 100;
+		if (label === 'tctl') return 95;
+	}
+	if (label === 'cpu_package' || /^package_id_\d+$/.test(label)) return 90;
+	if (label === 'cpu' || label === 'cpu_temp' || label === 'cpu_temperature') return 80;
+	if (/^tsi\d+_temp$/.test(label)) return 70;
+	if (label === 'cputin') return 60;
+	return 0;
+};
+
+export function selectPrimaryTemperatureSensor(
+	sensors: readonly HwmonTemperatureSensor[],
+): HwmonTemperatureSensor {
+	let primary = sensors[0]!;
+	let primaryPriority = cpuTemperaturePriority(primary);
+	for (const sensor of sensors.slice(1)) {
+		const priority = cpuTemperaturePriority(sensor);
+		if (priority <= primaryPriority) continue;
+		primary = sensor;
+		primaryPriority = priority;
+	}
+	return primary;
+}
+
 const temperatureValue = (sensors: readonly HwmonTemperatureSensor[]): HwmonTemperatureValue => {
-	const primary =
-		sensors.find(
-			(sensor) =>
-				sensor.deviceName === 'coretemp' &&
-				sensor.label.toLowerCase().startsWith('package'),
-		) ?? sensors[0]!;
+	const primary = selectPrimaryTemperatureSensor(sensors);
 	const values = sensors.map((sensor) => sensor.valueCelsius);
 	return {
 		averageCelsius: average(values),

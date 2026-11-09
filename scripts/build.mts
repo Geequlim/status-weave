@@ -47,25 +47,58 @@ const collectJavaScript = async (directory: string): Promise<string[]> => {
 	return files;
 };
 
-const rewriteRelativeRequires = (source: string, modulePath: string): string => {
+const rewriteRelativeRequires = (
+	source: string,
+	modulePath: string,
+	formatImport: (resolved: string) => string,
+): string => {
 	const moduleDirectory = dirname(modulePath);
 	return source.replace(/require\("(\.{1,2}\/[^"]+)"\)/g, (_match, request: string) => {
 		const resolved = normalize(join(moduleDirectory, request)).split(sep).join('/');
-		return `require("./${resolved}")`;
+		return formatImport(resolved);
 	});
 };
 
+// Cinnamon 6.8 imports files natively and only exposes top-level var/functions.
+const nativeSpice = join(spice, '6.8');
+// Cinnamon clears the top-level import cache on reload.
+const nativeModuleName = (path: string) => `module-${path.replaceAll('/', '__')}`;
+await mkdir(nativeSpice);
+for (const entry of ['settings-schema.json', 'icons', 'stylesheet.css']) {
+	await cp(join(spice, entry), join(nativeSpice, entry), { recursive: true });
+}
 for (const sourceFile of await collectJavaScript(compiledRoot)) {
 	const modulePath = sourceFile.slice(compiledRoot.length + 1);
 	if (modulePath === 'index.js') continue;
 
-	const targetPath = modulePath === 'applet/main.js' ? 'applet.js' : modulePath;
-	const targetFile = join(spice, targetPath);
-	const source = await readFile(sourceFile, 'utf8');
-	const packagedSource = rewriteRelativeRequires(source, modulePath)
-		.replace(/\n?\/\/# sourceMappingURL=.*$/, '')
-		.concat('\n');
-	await mkdir(dirname(targetFile), { recursive: true });
-	await writeFile(targetFile, packagedSource);
+	const isEntry = modulePath === 'applet/main.js';
+	const legacyFile = join(spice, isEntry ? 'applet.js' : modulePath);
+	const nativeFile = join(nativeSpice, nativeModuleName(modulePath));
+	const source = (await readFile(sourceFile, 'utf8')).replace(
+		/\n?\/\/# sourceMappingURL=.*$/,
+		'',
+	);
+	const legacySource = rewriteRelativeRequires(
+		source,
+		modulePath,
+		(resolved) => `require("./${resolved}")`,
+	);
+	const nativeSource = rewriteRelativeRequires(
+		source,
+		modulePath,
+		(resolved) => `xletImports[${JSON.stringify(nativeModuleName(resolved))}].cjsExports`,
+	);
+	await mkdir(dirname(legacyFile), { recursive: true });
+	await writeFile(legacyFile, `${legacySource}\n`);
+	await writeFile(
+		nativeFile,
+		`var cjsExports = (function (exports, xletImports) {\n${
+			nativeSource
+		}\nreturn exports;\n})({}, imports.ui.extension.getCurrentExtension().imports);\n`,
+	);
 }
+await writeFile(
+	join(nativeSpice, 'applet.js'),
+	'function main(...args) {\n\treturn imports.ui.extension.getCurrentExtension().imports["module-applet__main"].cjsExports.main(...args);\n}\n',
+);
 console.log(`Built Cinnamon package: ${spice}`);

@@ -35,10 +35,6 @@ export function createDetailPageFrame(
 	scroll.add_actor(content);
 	item.addActor(scroll, { expand: true, span: -1 });
 
-	const header = new St.BoxLayout({
-		style_class: 'status-weave-detail-header-block',
-		vertical: true,
-	});
 	const titleRow = new St.BoxLayout({ style_class: 'status-weave-detail-header-row' });
 	if (iconName) {
 		const iconPath = `${metadataPath}/icons/phosphor/${iconStyle}/${iconName}-symbolic.svg`;
@@ -57,7 +53,6 @@ export function createDetailPageFrame(
 		x_expand: true,
 	});
 	titleRow.add_child(titleLabel);
-	header.add_child(titleRow);
 	const status = new St.Label({
 		style_class: 'status-weave-detail-status',
 		text: '等待采样',
@@ -65,20 +60,8 @@ export function createDetailPageFrame(
 	});
 	const statusText = status.get_clutter_text();
 	statusText.set_ellipsize(imports.gi.Pango.EllipsizeMode.NONE);
-	const fitStatusToText = () => {
-		const layout = statusText.get_layout();
-		layout.set_width(-1);
-		const [textWidth] = layout.get_pixel_size();
-		const horizontalPadding = status.get_theme_node().get_horizontal_padding();
-		status.set_width(Math.ceil((textWidth ?? 0) + horizontalPadding));
-	};
-	const statusContainer = new St.Bin({
-		x_align: St.Align.END,
-		x_expand: true,
-	});
-	statusContainer.set_child(status);
-	header.add_child(statusContainer);
-	content.add_child(header);
+	titleRow.add_child(status);
+	content.add_child(titleRow);
 
 	const createRow = (rowTitle: string): DetailValueRow => {
 		const actor = new St.BoxLayout({ style_class: 'status-weave-detail-row' });
@@ -126,7 +109,6 @@ export function createDetailPageFrame(
 				}
 				status.add_style_class_name(`status-weave-status-${metricStatus}`);
 				status.set_text(text);
-				fitStatusToText();
 				status.show();
 			} else {
 				status.hide();

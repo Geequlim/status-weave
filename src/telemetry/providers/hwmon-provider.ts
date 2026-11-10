@@ -173,7 +173,9 @@ export class HwmonProvider implements SnapshotProvider {
 			const samples: AnyMetricSample[] = [];
 			if (temperatureRequested) {
 				const sensors: HwmonTemperatureSensor[] = available
-					.filter((reading) => reading.definition.kind === 'temperature')
+					.filter(
+						(reading) => reading.definition.kind === 'temperature' && reading.raw !== 0,
+					)
 					.map(({ definition, raw }) => ({
 						criticalCelsius: definition.critical,
 						deviceName: definition.deviceName,
@@ -192,7 +194,7 @@ export class HwmonProvider implements SnapshotProvider {
 								value: temperatureValue(sensors),
 							}
 						: {
-								error: '未发现可读取的温度传感器',
+								error: '未发现可用的温度传感器',
 								metricId: 'temperature.hwmon',
 								sampledAt,
 								sourceId: 'system',

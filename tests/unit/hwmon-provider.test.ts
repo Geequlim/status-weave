@@ -89,6 +89,80 @@ describe('HwmonProvider', () => {
 		expect(readTextFile).not.toHaveBeenCalledWith('/sys/class/hwmon/hwmon5/fan1_input');
 	});
 
+	it('omits zero temperature readings and includes them again when they become nonzero', async () => {
+		const additionalFiles = [
+			'/sys/class/hwmon/hwmon7\ttemp2_input',
+			'/sys/class/hwmon/hwmon7\ttemp2_label',
+			'/sys/class/hwmon/hwmon7\ttemp3_input',
+			'/sys/class/hwmon/hwmon7\ttemp3_label',
+		].join('\n');
+		const additionalValues: Record<string, string> = {
+			'/sys/class/hwmon/hwmon7/temp2_input': '0\n',
+			'/sys/class/hwmon/hwmon7/temp2_label': 'Auxiliary\n',
+			'/sys/class/hwmon/hwmon7/temp3_input': '-10000\n',
+			'/sys/class/hwmon/hwmon7/temp3_label': 'Cold\n',
+		};
+		executeCommand.mockImplementation(async (_command: string, args: readonly string[]) =>
+			args.includes('/sys/class/hwmon') ? links : `${files}\n${additionalFiles}`,
+		);
+		readTextFile.mockImplementation(async (path: string) => {
+			const value = additionalValues[path] ?? values[path];
+			if (value === undefined) throw new Error(`missing fixture: ${path}`);
+			return value;
+		});
+
+		const provider = new HwmonProvider();
+		const initial = await provider.sample(new Set(['temperature.hwmon']));
+		expect(initial.samples[0]).toMatchObject({
+			status: 'normal',
+			value: {
+				averageCelsius: 21,
+				peakCelsius: 52,
+				primaryCelsius: 52,
+				sensors: [
+					expect.objectContaining({ label: 'Package id 0', valueCelsius: 52 }),
+					expect.objectContaining({ label: 'Cold', valueCelsius: -10 }),
+				],
+			},
+		});
+
+		additionalValues['/sys/class/hwmon/hwmon7/temp2_input'] = '68000\n';
+		const updated = await provider.sample(new Set(['temperature.hwmon']));
+		expect(updated.samples[0]?.value?.sensors).toHaveLength(3);
+		expect(updated.samples[0]?.value?.averageCelsius).toBeCloseTo(110 / 3);
+		expect(updated.samples[0]?.value?.peakCelsius).toBe(68);
+	});
+
+	it('reports unavailable when all temperatures are zero while retaining stopped fans', async () => {
+		readTextFile.mockImplementation(async (path: string) => {
+			if (path === '/sys/class/hwmon/hwmon7/temp1_input') return '0\n';
+			if (path === '/sys/class/hwmon/hwmon5/fan1_input') return '0\n';
+			const value = values[path];
+			if (value === undefined) throw new Error(`missing fixture: ${path}`);
+			return value;
+		});
+
+		const snapshot = await new HwmonProvider().sample(
+			new Set(['temperature.hwmon', 'fan.hwmon']),
+		);
+		expect(snapshot.samples[0]).toMatchObject({
+			metricId: 'temperature.hwmon',
+			status: 'unavailable',
+			value: null,
+		});
+		expect(snapshot.samples[1]).toMatchObject({
+			metricId: 'fan.hwmon',
+			value: {
+				averageRpm: 1250,
+				primaryRpm: 0,
+				sensors: [
+					expect.objectContaining({ label: 'cpu_fan', rpm: 0 }),
+					expect.objectContaining({ label: 'gpu_fan', rpm: 2500 }),
+				],
+			},
+		});
+	});
+
 	it('selects the CPU fan as primary and exposes every fan', async () => {
 		const snapshot = await new HwmonProvider().sample(new Set(['fan.hwmon']));
 		expect(snapshot.samples[0]).toMatchObject({

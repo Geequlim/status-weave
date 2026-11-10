@@ -84,7 +84,7 @@
 }
 
 .status-weave-value-network-both {
-	width: 10.25em;
+	min-width: 9.25em;
 }
 
 .status-weave-value-network-download,
